@@ -313,7 +313,7 @@ if(!authed) return <LoginPage onLogin={login}/>;
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
         {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
         {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} fy={fy}/>}
-        {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
+        {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy} logout={logout}/>}
       </div>
     </div>
   );
@@ -1098,7 +1098,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
-function SettingsPage({team,saveTeam,fy,setFy}) {
+function SettingsPage({team,saveTeam,fy,setFy,logout}) {
   const [lt,setLt]=useState(()=>team.map(m=>({...m})));
   const [saved,setSaved]=useState(false);
   const save=()=>{saveTeam(lt);setSaved(true);setTimeout(()=>setSaved(false),2000);};
