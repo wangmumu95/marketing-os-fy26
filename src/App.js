@@ -438,7 +438,7 @@ export default function App() {
       style={{
         display: "flex",
         minHeight: 620,
-        fontFamily: "var(--font-sans)",
+        fontFamily: "'Calibri', 'Trebuchet MS', Arial, sans-serif",
       }}
     >
       {/* Sidebar */}
@@ -1628,7 +1628,7 @@ function TaskModal({
             resize: "vertical",
             background: "var(--color-background-primary)",
             color: "var(--color-text-primary)",
-            fontFamily: "var(--font-sans)",
+            fontFamily: "'Calibri', 'Trebuchet MS', Arial, sans-serif",
           }}
         />
       </Lbl>
