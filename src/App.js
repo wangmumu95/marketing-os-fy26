@@ -242,7 +242,7 @@ export default function App() {
         })}
 
         {/* Team */}
-        <div style={{marginTop:'auto',paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+        <div style={{marginTop:16,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
             letterSpacing:'0.08em',padding:'0 4px',marginBottom:10}}>Team</div>
           {team.map(m=>(
