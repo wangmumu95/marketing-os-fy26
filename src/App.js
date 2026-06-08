@@ -262,7 +262,7 @@ export default function App() {
 
       {/* ── Sidebar ── */}
       <div style={{width:200,flexShrink:0,height:'100vh',background:'#1A1D30',
-        display:'flex',flexDirection:'column',padding:'20px 12px 16px'}}>
+        display:'flex',flexDirection:'column',padding:'20px 12px 16px',overflow:'hidden'}}>
 
         {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 8px',marginBottom:14}}>
@@ -298,12 +298,12 @@ export default function App() {
         })}
 
         {/* Team */}
-        <div style={{marginTop:16,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+        <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)',minHeight:0}}>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
-            letterSpacing:'0.08em',padding:'0 4px',marginBottom:8}}>Team</div>
+            letterSpacing:'0.08em',padding:'0 4px',marginBottom:6}}>Team</div>
           {team.map(m=>(
-            <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 4px',marginBottom:2}}>
-              <div style={{width:22,height:22,borderRadius:'50%',background:m.color+'30',
+            <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'2px 4px',marginBottom:2}}>
+              <div style={{width:20,height:20,borderRadius:'50%',background:m.color+'30',
                 border:`2px solid ${m.color}50`,display:'flex',alignItems:'center',
                 justifyContent:'center',fontSize:'8px',fontWeight:700,color:m.color,flexShrink:0}}>
                 {ini(m.name)}
@@ -314,8 +314,8 @@ export default function App() {
           ))}
         </div>
 
-        {/* Logout — pinned to bottom */}
-        <div style={{marginTop:'auto',paddingTop:12}}>
+        {/* Logout — always visible at bottom */}
+        <div style={{flexShrink:0,paddingTop:10,marginTop:'auto'}}>
           <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
             width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
             background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
