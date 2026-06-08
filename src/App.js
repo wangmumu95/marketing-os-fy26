@@ -293,7 +293,17 @@ if(!authed) return <LoginPage onLogin={login}/>;
         <div style={{marginTop:16,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
             letterSpacing:'0.08em',padding:'0 4px',marginBottom:10}}>Team</div>
-          {team.map(m=>(
+          <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
+  width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
+  background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
+  fontSize:13,fontWeight:500,fontFamily:F,marginBottom:10}}>
+  <div style={{width:28,height:28,borderRadius:8,background:'rgba(239,68,68,0.15)',
+    display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+    <i className="ti ti-logout" style={{fontSize:14}}/>
+  </div>
+  Log out
+</button>
+  {team.map(m=>(
             <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 4px',marginBottom:2}}>
               <div style={{width:22,height:22,borderRadius:'50%',background:m.color+'30',
                 border:`2px solid ${m.color}50`,display:'flex',alignItems:'center',
