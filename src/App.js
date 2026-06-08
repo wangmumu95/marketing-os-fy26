@@ -186,7 +186,7 @@ function LoginPage({onLogin}) {
           <i className="ti ti-chart-bar" style={{fontSize:26,color:'white'}}/>
         </div>
         <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Pan Pac</h1>
-        <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Enter the team password to continue</p>
+        <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Enter the team password to open sesame</p>
         <input type="password" value={pw}
           onChange={e=>{setPw(e.target.value);setError(false);}}
           onKeyDown={e=>e.key==='Enter'&&attempt()}
