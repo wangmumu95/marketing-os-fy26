@@ -297,8 +297,9 @@ export default function App() {
           );
         })}
 
-        {/* Team */}
-        <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)',minHeight:0}}>
+        {/* Team — flex:1 means it takes remaining space and shrinks if needed */}
+        <div style={{flex:1,minHeight:0,marginTop:12,paddingTop:10,
+          borderTop:'1px solid rgba(255,255,255,0.08)',overflow:'hidden'}}>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
             letterSpacing:'0.08em',padding:'0 4px',marginBottom:6}}>Team</div>
           {team.map(m=>(
@@ -314,8 +315,8 @@ export default function App() {
           ))}
         </div>
 
-        {/* Logout — always visible at bottom */}
-        <div style={{flexShrink:0,paddingTop:10,marginTop:'auto'}}>
+        {/* Logout — flexShrink:0 means it NEVER gets cut off */}
+        <div style={{flexShrink:0,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)',marginTop:8}}>
           <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
             width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
             background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
