@@ -207,7 +207,7 @@ export default function App() {
         display:'flex',flexDirection:'column',gap:3}}>
 
         {/* Logo */}
-        <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 8px',marginBottom:24}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 8px',marginBottom:14}}>
           <div style={{width:32,height:32,borderRadius:10,background:'#6366f1',
             display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <i className="ti ti-chart-bar" style={{fontSize:16,color:'white'}} aria-hidden/>
@@ -222,7 +222,7 @@ export default function App() {
           const active=page===n.id;
           return (
             <button key={n.id} onClick={()=>setPage(n.id)} style={{
-              display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:10,
+              display:'flex',alignItems:'center',gap:10,padding:'6px 10px',borderRadius:10,
               border:'none',
               background:active?'rgba(99,102,241,0.2)':'transparent',
               color:active?'#a5b4fc':'rgba(255,255,255,0.45)',
@@ -242,7 +242,7 @@ export default function App() {
         })}
 
         {/* Team */}
-        <div style={{marginTop:'auto',paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+        <div style={{marginTop:'auto',paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
             letterSpacing:'0.08em',padding:'0 4px',marginBottom:10}}>Team</div>
           {team.map(m=>(
