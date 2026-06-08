@@ -23,7 +23,7 @@ const PBG = { Low:'#F1F5F9', Medium:'#EEEEFF', High:'#FFFAEC', Urgent:'#FEE9E9' 
 const MC = ['#6366f1','#0891b2','#10b981','#f59e0b','#ef4444'];
 const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
-const TEAM_PASSWORD = 'marketing2026';
+const TEAM_PASSWORD = 'Panpac3003';
 
 const F = "'Calibri','Trebuchet MS',Arial,sans-serif";
 const PAGE  = '#EEF1F9';
@@ -185,7 +185,7 @@ function LoginPage({onLogin}) {
           display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
           <i className="ti ti-chart-bar" style={{fontSize:26,color:'white'}}/>
         </div>
-        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Marketing OS</h1>
+        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Pan Pac</h1>
         <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Enter the team password to continue</p>
         <input type="password" value={pw}
           onChange={e=>{setPw(e.target.value);setError(false);}}
@@ -204,7 +204,7 @@ function LoginPage({onLogin}) {
           Sign in →
         </button>
         <p style={{margin:'20px 0 0',fontSize:11,color:TXT2}}>
-          Ask your team lead if you've forgotten the password.
+          Go away if you dont know the password.
         </p>
       </div>
     </div>
