@@ -1,8 +1,50 @@
-.App {
-  font-family: 'Calibri', 'Trebuchet MS', Arial, sans-serif;
-  text-align: center;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  width: 100%;
 }
 
-* {
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
   font-family: 'Calibri', 'Trebuchet MS', Arial, sans-serif;
+  background: #EEF1F9;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+}
+
+input, select, textarea, button {
+  font-family: 'Calibri', 'Trebuchet MS', Arial, sans-serif;
+  outline: none;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+  padding: 8px 12px;
+  border: 1px solid #E5E9F5;
+  border-radius: 8px;
+  background: #F7F8FD;
+  color: #1A1D30;
+  font-size: 13px;
+  transition: border-color 0.15s;
+}
+
+input:focus, select:focus, textarea:focus { border-color: #6366f1; }
+select { cursor: pointer; }
+
+textarea {
+  padding: 8px 12px;
+  border: 1px solid #E5E9F5;
+  border-radius: 8px;
+  background: #F7F8FD;
+  color: #1A1D30;
+  resize: vertical;
 }
