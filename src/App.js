@@ -200,10 +200,10 @@ export default function App() {
   ];
 
   return (
-    <div style={{display:'flex',minHeight:620,fontFamily:F,background:PAGE}}>
+    <div style={{display:'flex',height:'100vh',width:'100vw',fontFamily:F,background:PAGE,overflow:'hidden'}}>
       {/* ── Sidebar ── */}
-      <div style={{width:200,flexShrink:0,background:'#1A1D30',
-        borderRadius:'16px 0 0 16px',padding:'24px 12px',
+      <div style={{width:200,flexShrink:0,height:'100vh',background:'#1A1D30',
+        borderRadius:0,padding:'24px 12px',
         display:'flex',flexDirection:'column',gap:3}}>
 
         {/* Logo */}
@@ -260,7 +260,7 @@ export default function App() {
       </div>
 
       {/* ── Content ── */}
-      <div style={{flex:1,padding:'24px 28px',overflow:'auto',minWidth:0}}>
+      <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
         {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
