@@ -262,10 +262,10 @@ export default function App() {
 
       {/* ── Sidebar ── */}
       <div style={{width:200,flexShrink:0,height:'100vh',background:'#1A1D30',
-        display:'flex',flexDirection:'column',padding:'20px 12px 16px',overflow:'hidden'}}>
+        display:'flex',flexDirection:'column'}}>
 
-        {/* Logo */}
-        <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 8px',marginBottom:14}}>
+        {/* Logo — fixed at top */}
+        <div style={{flexShrink:0,padding:'20px 12px 12px',display:'flex',alignItems:'center',gap:10}}>
           <div style={{width:32,height:32,borderRadius:10,background:'#6366f1',
             display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <i className="ti ti-chart-bar" style={{fontSize:16,color:'white'}} aria-hidden/>
@@ -273,50 +273,55 @@ export default function App() {
           <span style={{color:'white',fontSize:14,fontWeight:700}}>Marketing OS</span>
         </div>
 
-        {/* Nav */}
-        <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
-          letterSpacing:'0.08em',padding:'0 8px',marginBottom:6}}>Menu</div>
-        {NAV.map(n=>{
-          const active=page===n.id;
-          return (
-            <button key={n.id} onClick={()=>setPage(n.id)} style={{
-              display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:10,
-              border:'none',background:active?'rgba(99,102,241,0.2)':'transparent',
-              color:active?'#a5b4fc':'rgba(255,255,255,0.45)',
-              cursor:'pointer',fontSize:13,fontWeight:active?600:400,
-              textAlign:'left',width:'100%',marginBottom:2,position:'relative'}}>
-              {active&&<div style={{position:'absolute',left:0,top:'20%',bottom:'20%',
-                width:3,background:'#6366f1',borderRadius:'0 3px 3px 0'}}/>}
-              <div style={{width:28,height:28,borderRadius:8,
-                background:active?'#6366f1':'rgba(255,255,255,0.07)',
-                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                <i className={`ti ${n.icon}`} style={{fontSize:14}} aria-hidden/>
-              </div>
-              {n.label}
-            </button>
-          );
-        })}
+        {/* Middle — scrollable if needed */}
+        <div style={{flex:1,overflowY:'auto',padding:'0 12px',minHeight:0}}>
 
-        {/* Team — flex:1 means it takes remaining space and shrinks if needed */}
-        <div style={{flex:1,minHeight:0,marginTop:12,paddingTop:10,
-          borderTop:'1px solid rgba(255,255,255,0.08)',overflow:'hidden'}}>
+          {/* Nav */}
           <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
-            letterSpacing:'0.08em',padding:'0 4px',marginBottom:6}}>Team</div>
-          {team.map(m=>(
-            <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'2px 4px',marginBottom:2}}>
-              <div style={{width:20,height:20,borderRadius:'50%',background:m.color+'30',
-                border:`2px solid ${m.color}50`,display:'flex',alignItems:'center',
-                justifyContent:'center',fontSize:'8px',fontWeight:700,color:m.color,flexShrink:0}}>
-                {ini(m.name)}
-              </div>
-              <span style={{color:'rgba(255,255,255,0.4)',fontSize:11,overflow:'hidden',
-                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.name}</span>
-            </div>
-          ))}
-        </div>
+            letterSpacing:'0.08em',padding:'0 8px',marginBottom:6}}>Menu</div>
+          {NAV.map(n=>{
+            const active=page===n.id;
+            return (
+              <button key={n.id} onClick={()=>setPage(n.id)} style={{
+                display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:10,
+                border:'none',background:active?'rgba(99,102,241,0.2)':'transparent',
+                color:active?'#a5b4fc':'rgba(255,255,255,0.45)',
+                cursor:'pointer',fontSize:13,fontWeight:active?600:400,
+                textAlign:'left',width:'100%',marginBottom:2,position:'relative'}}>
+                {active&&<div style={{position:'absolute',left:0,top:'20%',bottom:'20%',
+                  width:3,background:'#6366f1',borderRadius:'0 3px 3px 0'}}/>}
+                <div style={{width:28,height:28,borderRadius:8,
+                  background:active?'#6366f1':'rgba(255,255,255,0.07)',
+                  display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <i className={`ti ${n.icon}`} style={{fontSize:14}} aria-hidden/>
+                </div>
+                {n.label}
+              </button>
+            );
+          })}
 
-        {/* Logout — flexShrink:0 means it NEVER gets cut off */}
-        <div style={{flexShrink:0,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)',marginTop:8}}>
+          {/* Team */}
+          <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
+              letterSpacing:'0.08em',padding:'0 4px',marginBottom:6}}>Team</div>
+            {team.map(m=>(
+              <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 4px',marginBottom:2}}>
+                <div style={{width:20,height:20,borderRadius:'50%',background:m.color+'30',
+                  border:`2px solid ${m.color}50`,display:'flex',alignItems:'center',
+                  justifyContent:'center',fontSize:'8px',fontWeight:700,color:m.color,flexShrink:0}}>
+                  {ini(m.name)}
+                </div>
+                <span style={{color:'rgba(255,255,255,0.4)',fontSize:11,overflow:'hidden',
+                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.name}</span>
+              </div>
+            ))}
+          </div>
+
+        </div>{/* end scrollable middle */}
+
+        {/* Logout — fixed at bottom, ALWAYS visible */}
+        <div style={{flexShrink:0,padding:'10px 12px 16px',
+          borderTop:'1px solid rgba(255,255,255,0.08)'}}>
           <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
             width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
             background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
