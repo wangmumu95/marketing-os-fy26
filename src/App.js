@@ -317,7 +317,17 @@ if(!authed) return <LoginPage onLogin={login}/>;
         </div>
       </div>
 
-      {/* ── Content ── */}
+     <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
+  width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
+  background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
+  fontSize:13,fontWeight:500,fontFamily:F,marginTop:10}}>
+  <div style={{width:28,height:28,borderRadius:8,background:'rgba(239,68,68,0.15)',
+    display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+    <i className="ti ti-logout" style={{fontSize:14}}/>
+  </div>
+  Log out
+</button>
+  {/* ── Content ── */}
       <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
