@@ -48,6 +48,7 @@ const mkId  = () => Math.random().toString(36).slice(2,10);
 const ini   = n => n.split(' ').filter(Boolean).map(w=>w[0].toUpperCase()).slice(0,2).join('');
 const getIds= t => t.assigneeIds||(t.assigneeId?[t.assigneeId]:[]);
 
+const TEAM_PASSWORD = 'Panpac3003';
 const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c}));
 const sv = async(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch{} };
 const ld = async(k,fb)=>{ try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r)}catch{} return fb; };
@@ -160,6 +161,49 @@ const TH = {padding:'10px 14px',textAlign:'left',fontSize:'11px',fontWeight:700,
 const TD = {padding:'10px 14px',textAlign:'left',fontSize:'13px',whiteSpace:'nowrap',color:TXT};
 
 // ─── App ──────────────────────────────────────────────────────────────────────
+function LoginPage({onLogin}) {
+  const [pw,setPw]=useState('');
+  const [error,setError]=useState(false);
+  const attempt=()=>{
+    if(pw===TEAM_PASSWORD){onLogin();}
+    else{setError(true);setTimeout(()=>setError(false),2000);}
+  };
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',
+      height:'100vh',width:'100vw',background:'#EEF1F9',fontFamily:F}}>
+      <div style={{background:CARD,borderRadius:20,
+        boxShadow:'0 8px 40px rgba(15,20,50,0.12)',
+        border:`1px solid ${BORDER}`,padding:'40px 48px',
+        width:'100%',maxWidth:380,textAlign:'center'}}>
+        <div style={{width:56,height:56,borderRadius:16,background:'#6366f1',
+          display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
+          <i className="ti ti-chart-bar" style={{fontSize:26,color:'white'}}/>
+        </div>
+        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Marketing OS</h1>
+        <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Enter the team password to continue</p>
+        <input type="password" value={pw}
+          onChange={e=>{setPw(e.target.value);setError(false);}}
+          onKeyDown={e=>e.key==='Enter'&&attempt()}
+          placeholder="Password"
+          style={{...inputStyle,textAlign:'center',letterSpacing:'0.15em',
+            marginBottom:12,fontSize:15,width:'100%',
+            border:`1.5px solid ${error?'#ef4444':BORDER}`,
+            background:error?'#FEE9E9':INBG}}/>
+        {error&&<p style={{color:'#ef4444',fontSize:12,margin:'0 0 12px',fontWeight:500}}>
+          Incorrect password. Try again.</p>}
+        <button onClick={attempt} style={{width:'100%',background:'#6366f1',
+          color:'white',border:'none',cursor:'pointer',padding:'11px',
+          borderRadius:10,fontSize:14,fontWeight:700,fontFamily:F,
+          boxShadow:'0 4px 12px rgba(99,102,241,0.35)'}}>
+          Sign in →
+        </button>
+        <p style={{margin:'20px 0 0',fontSize:11,color:TXT2}}>
+          Ask your team lead if you've forgotten the password.
+        </p>
+      </div>
+    </div>
+  );
+}
 export default function App() {
   const [page,setPage]   = useState('dashboard');
   const [team,setTeam]   = useState(DEFAULT_TEAM);
@@ -169,6 +213,10 @@ export default function App() {
   const [leads,setLeads] = useState({});
   const [fy,setFy]       = useState(fyNow());
   const [ready,setReady] = useState(false);
+  const [authed,setAuthed]=useState(()=>localStorage.getItem('mkt_auth')==='true');
+const login=()=>{localStorage.setItem('mkt_auth','true');setAuthed(true);};
+const logout=()=>{localStorage.removeItem('mkt_auth');setAuthed(false);};
+if(!authed) return <LoginPage onLogin={login}/>;
 
   useEffect(()=>{
     (async()=>{
@@ -1056,7 +1104,16 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
   const save=()=>{saveTeam(lt);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   return (
     <div>
-      <PageHeader title="Settings"/>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
+  <div>
+    <h2 style={{margin:0,fontSize:20,fontWeight:700,color:TXT,letterSpacing:'-0.02em'}}>Settings</h2>
+  </div>
+  <button onClick={logout} style={{background:'#FEE9E9',color:'#dc2626',border:'none',
+    cursor:'pointer',padding:'8px 18px',borderRadius:10,fontSize:13,
+    fontWeight:600,fontFamily:F,display:'flex',alignItems:'center',gap:6}}>
+    <i className="ti ti-logout" style={{fontSize:14}}/> Log out
+  </button>
+</div>
       <Card style={{padding:'20px 24px',marginBottom:16}}>
         <h3 style={{margin:'0 0 6px',fontSize:15,fontWeight:700,color:TXT}}>Team members</h3>
         <p style={{margin:'0 0 18px',fontSize:13,color:TXT2}}>Rename members and pick a colour. These appear on tasks and KPIs.</p>
