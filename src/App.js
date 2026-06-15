@@ -1940,10 +1940,9 @@ async function parseExcelFile(file){
     reader.onerror=()=>reject('File read error — please try again.');
     reader.onload=e=>{
       try{
-        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
         const ws=wb.Sheets[wb.SheetNames[0]];
-        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        // Find first row that has actual content (skip truly empty rows)
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false,dateNF:'d-mmm-yy'});
         const hIdx=raw.findIndex(r=>r.some(c=>String(c).trim()));
         if(hIdx<0||raw.length<=hIdx+1){reject('No data found in file.');return;}
         const headers=raw[hIdx].map(h=>String(h).trim());
@@ -1955,6 +1954,38 @@ async function parseExcelFile(file){
     };
     reader.readAsArrayBuffer(file);
   });
+}
+
+// Parse various month/date strings → 'YYYY-MM' or null
+const MONTH_NAMES={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseMonthKey(val){
+  if(!val) return null;
+  const s=String(val).trim();
+  if(/^\d{4}-\d{2}$/.test(s)) return s;
+  // MM/YYYY
+  const mY=s.match(/^(\d{1,2})\/(\d{4})$/);
+  if(mY) return `${mY[2]}-${mY[1].padStart(2,'0')}`;
+  // "Jan-25","Jan 25","Jan-2025","JAN25","January 2025"
+  const mName=s.match(/([a-zA-Z]{3,})[\s\-\/]?(\d{2,4})/);
+  if(mName){const mn=MONTH_NAMES[mName[1].toLowerCase().slice(0,3)];if(mn){let yr=parseInt(mName[2]);if(yr<100)yr+=2000;return `${yr}-${String(mn).padStart(2,'0')}`;}}
+  // "15-Jan-25"
+  const dmy=s.match(/^\d{1,2}[\-\/]([a-zA-Z]{3})[\-\/](\d{2,4})$/);
+  if(dmy){const mn=MONTH_NAMES[dmy[1].toLowerCase()];if(mn){let yr=parseInt(dmy[2]);if(yr<100)yr+=2000;return `${yr}-${String(mn).padStart(2,'0')}`;}}
+  // "2025-01-15"
+  const iso=s.match(/^(\d{4})[\-\/](\d{1,2})[\-\/]\d/);
+  if(iso) return `${iso[1]}-${iso[2].padStart(2,'0')}`;
+  // "15/01/2025" (SG: DD/MM/YYYY)
+  const dmy2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(dmy2) return `${dmy2[3]}-${dmy2[2].padStart(2,'0')}`;
+  return null;
+}
+function fmtMK(k){if(!k)return 'Unknown';const[yr,mo]=k.split('-');const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1];return `${m} ${yr}`;}
+
+// Group mapped rows by month
+function groupByMonth(rows,getKey,fallback){
+  const out={};
+  rows.forEach(r=>{const k=parseMonthKey(getKey(r))||fallback;if(!out[k])out[k]=[];out[k].push(r);});
+  return out;
 }
 
 // Map a raw row (array) + headers array to a lead object
@@ -2035,7 +2066,11 @@ function ImportModal({type,onClose,onImport}){
       const {headers,rows}=await parseExcelFile(file);
       const mapped=rows.map(row=>isLead?mapLead(row,headers):mapDeal(row,headers));
       if(!mapped.length){setError('No data rows found in the file.');setLoading(false);return;}
-      setPreview({mapped,total:rows.length});
+      // Group by month
+      const byMonth=isLead
+        ?groupByMonth(mapped,r=>r.date||r.no,'unknown')
+        :groupByMonth(mapped,r=>r.month,'unknown');
+      setPreview({mapped,byMonth,total:rows.length});
     }catch(err){setError(String(err));}
     setLoading(false);
     e.target.value='';
@@ -2112,14 +2147,44 @@ function ImportModal({type,onClose,onImport}){
                 ✓ {preview.total} rows read
               </span>
               <span style={{fontSize:12,color:'#065f46',marginLeft:8}}>
-                — review the preview below then confirm
+                across {Object.keys(preview.byMonth).length} month{Object.keys(preview.byMonth).length>1?'s':''}
               </span>
             </div>
-            <label style={{fontSize:11,color:'#6366f1',cursor:'pointer',
-              textDecoration:'underline',fontFamily:F}}>
+            <label style={{fontSize:11,color:'#6366f1',cursor:'pointer',textDecoration:'underline',fontFamily:F}}>
               <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
               Upload different file
             </label>
+          </div>
+
+          {/* Month breakdown */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:TXT,marginBottom:8,
+              textTransform:'uppercase',letterSpacing:'0.04em'}}>
+              Will be saved to:
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              {Object.entries(preview.byMonth)
+                .sort(([a],[b])=>a.localeCompare(b))
+                .map(([mk,rows])=>(
+                <div key={mk} style={{display:'flex',alignItems:'center',gap:8,
+                  padding:'6px 12px',borderRadius:8,
+                  background:mk==='unknown'?'#FEF4DC':'#EEEEFF',
+                  border:`1px solid ${mk==='unknown'?'#FCD34D':'#C7D2FE'}`}}>
+                  <span style={{fontSize:12,fontWeight:700,
+                    color:mk==='unknown'?'#92400e':'#6366f1'}}>
+                    {mk==='unknown'?'⚠ Month not detected':fmtMK(mk)}
+                  </span>
+                  <span style={{fontSize:11,color:mk==='unknown'?'#b45309':TXT2}}>
+                    {rows.length} row{rows.length>1?'s':''}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {preview.byMonth['unknown']&&(
+              <p style={{fontSize:11,color:'#b45309',marginTop:8,marginBottom:0}}>
+                ⚠ Rows with no detected month will be saved to the currently selected month.
+              </p>
+            )}
           </div>
 
           {/* Preview table */}
@@ -2242,11 +2307,19 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
   // Import
   const handleImport=(rows,mode,type)=>{
     if(type==='lead'){
-      const existing=mode==='replace'?[]:mLeads;
-      saveLeadRecords({...leadRecords,[month]:[...existing,...rows]});
-    } else {
-      const existing=mode==='replace'?[]:mDeals;
-      saveClosedDeals({...closedDeals,[month]:[...existing,...rows]});
+      const byMonth=groupByMonth(rows,r=>r.date||r.no,month);
+      const updated={...leadRecords};
+      Object.entries(byMonth).forEach(([mk,mrs])=>{
+        updated[mk]=mode==='replace'?mrs:[...(updated[mk]||[]),...mrs];
+      });
+      saveLeadRecords(updated);
+    }else{
+      const byMonth=groupByMonth(rows,r=>r.month,month);
+      const updated={...closedDeals};
+      Object.entries(byMonth).forEach(([mk,mrs])=>{
+        updated[mk]=mode==='replace'?mrs:[...(updated[mk]||[]),...mrs];
+      });
+      saveClosedDeals(updated);
     }
     setIT(null);
   };
