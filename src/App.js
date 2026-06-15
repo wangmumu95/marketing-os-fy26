@@ -254,17 +254,6 @@ export default function App() {
   const login  = ()=>{ localStorage.setItem('mkt_auth','true'); setAuthed(true); };
   const logout = ()=>{ localStorage.removeItem('mkt_auth'); setAuthed(false); setReady(false); };
 
-  // Prevent browser from navigating to dropped files (capture phase runs before browser default)
-  useEffect(()=>{
-    const stop=e=>e.preventDefault();
-    document.addEventListener('dragover',stop,true);
-    document.addEventListener('drop',stop,true);
-    return ()=>{
-      document.removeEventListener('dragover',stop,true);
-      document.removeEventListener('drop',stop,true);
-    };
-  },[]);
-
   // useEffect MUST be before any early returns (React rules)
   useEffect(()=>{
     if(!authed){ setReady(false); return; }
@@ -985,29 +974,18 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           </div>
         )}
 
-        {/* Upload zone */}
+        {/* Upload zone — click only */}
         <label style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,
           padding:'18px',borderRadius:10,border:`2px dashed ${BORDER}`,cursor:'pointer',
-          background:'#FAFBFF',transition:'background 0.15s'}}
-          onDragOver={e=>{e.preventDefault();e.currentTarget.style.background='#EEEEFF';}}
-          onDragLeave={e=>{e.currentTarget.style.background='#FAFBFF';}}
-          onDrop={e=>{e.preventDefault();e.currentTarget.style.background='#FAFBFF';
-            const files=Array.from(e.dataTransfer.files);
-            files.forEach(file=>{
-              if(!file.type.startsWith('image/')) return;
-              const reader=new FileReader();
-              reader.onload=ev=>s('images',prev=>[...(prev||[]),{id:mkId(),data:ev.target.result,name:file.name}]);
-              reader.readAsDataURL(file);
-            });
-          }}>
+          background:'#FAFBFF'}}>
           <input type="file" accept="image/*" multiple onChange={handleImages} style={{display:'none'}}/>
           <div style={{width:36,height:36,borderRadius:10,background:'#EEEEFF',
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <i className="ti ti-photo" style={{fontSize:18,color:'#6366f1'}}/>
           </div>
           <div style={{textAlign:'center'}}>
-            <div style={{fontSize:13,fontWeight:600,color:TXT}}>Click or drag & drop</div>
-            <div style={{fontSize:11,color:TXT2,marginTop:2}}>PNG, JPG, GIF, WebP</div>
+            <div style={{fontSize:13,fontWeight:600,color:TXT}}>Click to add photos or screenshots</div>
+            <div style={{fontSize:11,color:TXT2,marginTop:2}}>PNG, JPG, GIF, WebP — multiple files supported</div>
           </div>
         </label>
       </div>
