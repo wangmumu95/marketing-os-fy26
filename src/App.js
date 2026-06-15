@@ -23,7 +23,7 @@ const PBG = { Low:'#F1F5F9', Medium:'#EEEEFF', High:'#FFFAEC', Urgent:'#FEE9E9' 
 const MC = ['#6366f1','#0891b2','#10b981','#f59e0b','#ef4444'];
 const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
-const TEAM_PASSWORD = 'marketing2026';
+const TEAM_PASSWORD = 'Panpac3003';
 
 const F = "'Calibri','Trebuchet MS',Arial,sans-serif";
 const PAGE  = '#EEF1F9';
@@ -256,6 +256,7 @@ export default function App() {
   const NAV=[
     {id:'dashboard',icon:'ti-layout-dashboard',label:'Dashboard'},
     {id:'tasks',    icon:'ti-layout-kanban',    label:'Tasks'},
+    {id:'calendar', icon:'ti-calendar',         label:'Calendar'},
     {id:'kpis',     icon:'ti-target',           label:'KPIs'},
     {id:'finance',  icon:'ti-report-money',     label:'Finance'},
     {id:'settings', icon:'ti-settings',         label:'Settings'},
@@ -344,6 +345,7 @@ export default function App() {
       <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
+        {page==='calendar'&& <CalendarPage team={team} tasks={tasks}/>}
         {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
         {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} fy={fy}/>}
         {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
@@ -995,6 +997,195 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+/* ── Calendar ───────────────────────────────────────────────────────────────── */
+function CalendarPage({team,tasks}) {
+  const [cur,setCur]=useState(new Date());
+  const [selected,setSelected]=useState(null);
+  const yr=cur.getFullYear(), mo=cur.getMonth();
+
+  const MONTHS=['January','February','March','April','May','June',
+    'July','August','September','October','November','December'];
+  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  // Build calendar grid (Monday first)
+  const firstDay=(new Date(yr,mo,1).getDay()+6)%7; // 0=Mon
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const cells=[];
+  for(let i=0;i<firstDay;i++) cells.push({d:new Date(yr,mo,-(firstDay-i-1)),cur:false});
+  for(let d=1;d<=daysInMonth;d++) cells.push({d:new Date(yr,mo,d),cur:true});
+  while(cells.length%7!==0) cells.push({d:new Date(yr,mo+1,cells.length-daysInMonth-firstDay+1),cur:false});
+
+  const toKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayKey=toKey(new Date());
+
+  const tasksForDay=d=>{
+    const k=toKey(d);
+    return tasks.filter(t=>t.dueDate===k);
+  };
+
+  const getTaskColor=t=>{
+    const ids=getIds(t);
+    const m=team.find(x=>ids.includes(x.id));
+    return m?m.color:EC[t.entity]?.a||'#94a3b8';
+  };
+
+  // All members who have tasks this month (for legend)
+  const activeMembers=team.filter(m=>
+    tasks.some(t=>getIds(t).includes(m.id)&&t.dueDate&&
+      t.dueDate.startsWith(`${yr}-${String(mo+1).padStart(2,'0')}`))
+  );
+
+  return (
+    <div>
+      <PageHeader title="Calendar"/>
+
+      {/* Month nav */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+        <button onClick={()=>setCur(new Date(yr,mo-1,1))} style={{
+          background:CARD,border:`1px solid ${BORDER}`,cursor:'pointer',
+          width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',
+          justifyContent:'center',color:TXT,boxShadow:CSHADOW}}>
+          <i className="ti ti-chevron-left" style={{fontSize:15}}/>
+        </button>
+        <span style={{fontSize:17,fontWeight:700,color:TXT,minWidth:160,textAlign:'center'}}>
+          {MONTHS[mo]} {yr}
+        </span>
+        <button onClick={()=>setCur(new Date(yr,mo+1,1))} style={{
+          background:CARD,border:`1px solid ${BORDER}`,cursor:'pointer',
+          width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',
+          justifyContent:'center',color:TXT,boxShadow:CSHADOW}}>
+          <i className="ti ti-chevron-right" style={{fontSize:15}}/>
+        </button>
+        <button onClick={()=>setCur(new Date())} style={{
+          background:'#EEEEFF',border:'none',cursor:'pointer',color:'#6366f1',
+          padding:'6px 14px',borderRadius:9,fontSize:12,fontWeight:600,fontFamily:F}}>
+          Today
+        </button>
+        {/* Legend */}
+        {activeMembers.length>0&&(
+          <div style={{display:'flex',gap:10,marginLeft:'auto',flexWrap:'wrap'}}>
+            {activeMembers.map(m=>(
+              <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
+                <div style={{width:10,height:10,borderRadius:3,background:m.color,flexShrink:0}}/>
+                <span style={{fontSize:11,color:TXT2,fontWeight:500}}>{m.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Calendar grid */}
+      <Card style={{overflow:'hidden'}}>
+        {/* Day headers */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',
+          borderBottom:`2px solid ${TBORDER}`}}>
+          {DAYS.map(d=>(
+            <div key={d} style={{padding:'10px 0',textAlign:'center',
+              fontSize:11,fontWeight:700,color:TXT2,
+              textTransform:'uppercase',letterSpacing:'0.06em'}}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+          {cells.map((cell,i)=>{
+            const key=toKey(cell.d);
+            const isToday=key===todayKey;
+            const dayTasks=tasksForDay(cell.d);
+            const overdue=dayTasks.filter(t=>t.status!=='Done'&&key<todayKey);
+            const show=dayTasks.slice(0,3);
+            const extra=dayTasks.length-3;
+            const isSelected=selected===key;
+            const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
+            return (
+              <div key={i} onClick={()=>setSelected(isSelected?null:key)}
+                style={{minHeight:90,padding:'8px',
+                  borderRight:`1px solid ${TBORDER}`,
+                  borderBottom:`1px solid ${TBORDER}`,
+                  background:isSelected?'#F3F4FF':isToday?'#FAFAFF':isWeekend&&!cell.cur?'#FAFBFF':CARD,
+                  cursor:'pointer',transition:'background 0.1s'}}>
+
+                {/* Date number */}
+                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:4}}>
+                  <span style={{
+                    width:24,height:24,borderRadius:'50%',
+                    background:isToday?'#6366f1':'transparent',
+                    color:isToday?'white':cell.cur?TXT:'#CBD5E1',
+                    fontSize:12,fontWeight:isToday?700:cell.cur?500:400,
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {cell.d.getDate()}
+                  </span>
+                </div>
+
+                {/* Tasks */}
+                {show.map(t=>{
+                  const c=getTaskColor(t);
+                  const done=t.status==='Done';
+                  const od=t.status!=='Done'&&key<todayKey;
+                  return (
+                    <div key={t.id} style={{
+                      background:od?'#FEE9E9':done?'#F0FDF4':c+'18',
+                      color:od?'#dc2626':done?'#10b981':c,
+                      fontSize:10,fontWeight:500,padding:'2px 6px',
+                      borderRadius:5,marginBottom:2,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                      borderLeft:`2.5px solid ${od?'#dc2626':done?'#10b981':c}`,
+                      textDecoration:done?'line-through':'none'}}>
+                      {t.title}
+                    </div>
+                  );
+                })}
+                {extra>0&&(
+                  <div style={{fontSize:10,color:TXT2,fontWeight:600,padding:'1px 4px'}}>
+                    +{extra} more
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Selected day task list */}
+      {selected&&(()=>{
+        const dayTasks=tasks.filter(t=>t.dueDate===selected);
+        if(!dayTasks.length) return null;
+        const d=new Date(selected+'T00:00:00');
+        return (
+          <Card style={{padding:'16px 20px',marginTop:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:TXT,marginBottom:12}}>
+              Tasks due {d.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long'})}
+              <span style={{background:'#EEF1F9',color:TXT2,fontSize:11,fontWeight:600,
+                padding:'2px 8px',borderRadius:99,marginLeft:8}}>{dayTasks.length}</span>
+            </div>
+            {dayTasks.map(t=>{
+              const ids=getIds(t);
+              const assignees=team.filter(m=>ids.includes(m.id));
+              const c=getTaskColor(t);
+              const od=t.status!=='Done'&&selected<todayKey;
+              return (
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,
+                  padding:'8px 0',borderBottom:`1px solid ${TBORDER}`}}>
+                  <div style={{width:3,height:32,borderRadius:2,background:c,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:500,color:od?'#dc2626':TXT,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</div>
+                    <div style={{fontSize:11,color:TXT2,marginTop:1}}>{t.status}{od?' · Overdue':''}</div>
+                  </div>
+                  {t.entity&&<Chip label={t.entity} ec={t.entity}/>}
+                  {assignees.length>0&&<AvatarStack assignees={assignees} size={22}/>}
+                </div>
+              );
+            })}
+          </Card>
+        );
+      })()}
     </div>
   );
 }
