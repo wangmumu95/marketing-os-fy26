@@ -565,6 +565,7 @@ function TasksPage({team,tasks,saveTasks}) {
   const [fe,setFe]=useState('all');
   const [modal,setModal]=useState(null);
   const [dragId,setDrag]=useState(null);
+  const [cardLightbox,setCardLightbox]=useState(null);
   const now=new Date();
 
   const filtered=tasks.filter(t=>(fm==='all'||getIds(t).includes(fm))&&(fe==='all'||t.entity===fe));
@@ -679,6 +680,25 @@ function TasksPage({team,tasks,saveTasks}) {
                           })}
                         </div>
                       )}
+                      {/* Image thumbnails */}
+                      {(t.images||[]).length>0&&(
+                        <div style={{display:'flex',gap:5,marginTop:7,flexWrap:'wrap'}}
+                          onClick={e=>e.stopPropagation()}>
+                          {(t.images||[]).slice(0,3).map(img=>(
+                            <img key={img.id} src={img.data} alt={img.name}
+                              style={{width:44,height:44,borderRadius:7,objectFit:'cover',
+                                cursor:'pointer',border:`1px solid ${BORDER}`}}
+                              onClick={e=>{e.stopPropagation();setCardLightbox(img);}}/>
+                          ))}
+                          {(t.images||[]).length>3&&(
+                            <div style={{width:44,height:44,borderRadius:7,background:'#EEF1F9',
+                              border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',
+                              justifyContent:'center',fontSize:11,fontWeight:600,color:TXT2}}>
+                              +{(t.images||[]).length-3}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -697,6 +717,22 @@ function TasksPage({team,tasks,saveTasks}) {
       {modal?.edit&&<TaskModal title="Edit task" task={modal.edit} onClose={()=>setModal(null)}
         onSave={d=>upTask(modal.edit.id,d)} onDelete={()=>delTask(modal.edit.id)}
         onCreateNext={createNext} team={team}/>}
+
+      {/* Card image lightbox */}
+      {cardLightbox&&(
+        <div onMouseDown={()=>setCardLightbox(null)}
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:2000,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            cursor:'pointer',flexDirection:'column',gap:12,padding:24}}>
+          <img src={cardLightbox.data} alt={cardLightbox.name}
+            style={{maxWidth:'85vw',maxHeight:'80vh',borderRadius:12,objectFit:'contain',
+              boxShadow:'0 24px 60px rgba(0,0,0,0.5)'}}
+            onMouseDown={e=>e.stopPropagation()}/>
+          <div style={{color:'rgba(255,255,255,0.6)',fontSize:12,fontFamily:F}}>
+            {cardLightbox.name} · click outside to close
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -709,10 +745,12 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
     dueDate:task?.dueDate||'',recurring:task?.recurring||'',
     subtasks:task?.subtasks||[],
     links:task?.links||[],
+    images:task?.images||[],
   });
   const [newSt,setNewSt]=useState('');
   const [newLinkUrl,setNewLinkUrl]=useState('');
   const [newLinkLabel,setNewLinkLabel]=useState('');
+  const [lightbox,setLightbox]=useState(null);
   const s=(k,v)=>setF(x=>({...x,[k]:v}));
   const toggleA=id=>s('assigneeIds',f.assigneeIds.includes(id)?f.assigneeIds.filter(x=>x!==id):[...f.assigneeIds,id]);
   const addSub=()=>{if(!newSt.trim())return;s('subtasks',[...f.subtasks,{id:mkId(),title:newSt.trim(),done:false}]);setNewSt('');};
@@ -728,6 +766,20 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
     setNewLinkUrl(''); setNewLinkLabel('');
   };
   const delLink=id=>s('links',(f.links||[]).filter(l=>l.id!==id));
+
+  const handleImages=e=>{
+    const files=Array.from(e.target.files||[]);
+    files.forEach(file=>{
+      if(!file.type.startsWith('image/')) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        s('images',prev=>[...(prev||[]),{id:mkId(),data:ev.target.result,name:file.name}]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value='';
+  };
+  const delImage=id=>s('images',(f.images||[]).filter(img=>img.id!==id));
   const handleCreateNext=()=>{
     let nd='';
     if(f.dueDate&&f.recurring){
@@ -889,6 +941,79 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           </div>
         </div>
       </div>
+
+      {/* Attachments (photos & screenshots) */}
+      <div style={{borderTop:`1px solid ${TBORDER}`,paddingTop:14,marginTop:4}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <span style={{fontSize:12,fontWeight:700,color:TXT,textTransform:'uppercase',letterSpacing:'0.05em'}}>
+            Photos & Screenshots
+          </span>
+          {(f.images||[]).length>0&&(
+            <span style={{fontSize:11,color:TXT2}}>{(f.images||[]).length} attached</span>
+          )}
+        </div>
+
+        {/* Thumbnail grid */}
+        {(f.images||[]).length>0&&(
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
+            {(f.images||[]).map(img=>(
+              <div key={img.id} style={{position:'relative',aspectRatio:'1',borderRadius:10,overflow:'hidden',
+                background:'#EEF1F9',border:`1px solid ${BORDER}`}}>
+                <img src={img.data} alt={img.name}
+                  style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}
+                  onClick={()=>setLightbox(img)}/>
+                <button onClick={()=>delImage(img.id)}
+                  style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',
+                    color:'white',border:'none',cursor:'pointer',width:20,height:20,
+                    borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:10,padding:0}}>
+                  <i className="ti ti-x"/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload zone */}
+        <label style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,
+          padding:'18px',borderRadius:10,border:`2px dashed ${BORDER}`,cursor:'pointer',
+          background:'#FAFBFF',transition:'background 0.15s'}}
+          onDragOver={e=>{e.preventDefault();e.currentTarget.style.background='#EEEEFF';}}
+          onDragLeave={e=>{e.currentTarget.style.background='#FAFBFF';}}
+          onDrop={e=>{e.preventDefault();e.currentTarget.style.background='#FAFBFF';
+            const files=Array.from(e.dataTransfer.files);
+            files.forEach(file=>{
+              if(!file.type.startsWith('image/')) return;
+              const reader=new FileReader();
+              reader.onload=ev=>s('images',prev=>[...(prev||[]),{id:mkId(),data:ev.target.result,name:file.name}]);
+              reader.readAsDataURL(file);
+            });
+          }}>
+          <input type="file" accept="image/*" multiple onChange={handleImages} style={{display:'none'}}/>
+          <div style={{width:36,height:36,borderRadius:10,background:'#EEEEFF',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <i className="ti ti-photo" style={{fontSize:18,color:'#6366f1'}}/>
+          </div>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:13,fontWeight:600,color:TXT}}>Click or drag & drop</div>
+            <div style={{fontSize:11,color:TXT2,marginTop:2}}>PNG, JPG, GIF, WebP</div>
+          </div>
+        </label>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox&&(
+        <div onMouseDown={()=>setLightbox(null)}
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:2000,
+            display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
+            flexDirection:'column',gap:12,padding:24}}>
+          <img src={lightbox.data} alt={lightbox.name}
+            style={{maxWidth:'85vw',maxHeight:'80vh',borderRadius:12,objectFit:'contain',
+              boxShadow:'0 24px 60px rgba(0,0,0,0.5)'}}
+            onMouseDown={e=>e.stopPropagation()}/>
+          <div style={{color:'rgba(255,255,255,0.6)',fontSize:12}}>{lightbox.name} · click outside to close</div>
+        </div>
+      )}
 
       <div style={{display:'flex',justifyContent:'space-between',marginTop:18,paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
         {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
