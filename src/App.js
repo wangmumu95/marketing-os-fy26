@@ -46,6 +46,32 @@ const mkId  = () => Math.random().toString(36).slice(2,10);
 const ini   = n => n.split(' ').filter(Boolean).map(w=>w[0].toUpperCase()).slice(0,2).join('');
 const getIds= t => t.assigneeIds||(t.assigneeId?[t.assigneeId]:[]);
 
+// Link helpers
+const getDomain = url => {
+  try {
+    const h=new URL(url).hostname.replace('www.','');
+    if(h.includes('canva')) return 'Canva';
+    if(h.includes('drive.google')||h.includes('docs.google')) return 'Google Drive';
+    if(h.includes('onedrive')||h.includes('sharepoint')||h.includes('1drv.ms')) return 'OneDrive';
+    if(h.includes('figma')) return 'Figma';
+    if(h.includes('notion')) return 'Notion';
+    if(h.includes('dropbox')) return 'Dropbox';
+    return h.split('.')[0].charAt(0).toUpperCase()+h.split('.')[0].slice(1);
+  } catch { return 'Link'; }
+};
+const getLinkColor = url => {
+  try {
+    const h=new URL(url).hostname;
+    if(h.includes('canva')) return '#7c3aed';
+    if(h.includes('google')) return '#1a73e8';
+    if(h.includes('onedrive')||h.includes('sharepoint')||h.includes('1drv')) return '#0078d4';
+    if(h.includes('figma')) return '#f24e1e';
+    if(h.includes('notion')) return '#000000';
+    if(h.includes('dropbox')) return '#0061ff';
+  } catch {}
+  return '#6366f1';
+};
+
 const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c}));
 const sv = async(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch{} };
 const ld = async(k,fb)=>{ try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r)}catch{} return fb; };
@@ -632,6 +658,27 @@ function TasksPage({team,tasks,saveTasks}) {
                           <span style={{fontSize:10,color:od?'#ef4444':TXT2,fontWeight:od?600:400}}>{od?'Overdue · ':''}{t.dueDate}</span>
                         </div>
                       )}
+                      {/* Link chips */}
+                      {(t.links||[]).length>0&&(
+                        <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:7}}
+                          onClick={e=>e.stopPropagation()}>
+                          {(t.links||[]).map(link=>{
+                            const c=getLinkColor(link.url);
+                            const label=link.label||getDomain(link.url);
+                            return (
+                              <a key={link.id} href={link.url} target="_blank"
+                                rel="noopener noreferrer"
+                                style={{display:'flex',alignItems:'center',gap:4,
+                                  fontSize:10,fontWeight:600,padding:'2px 7px',
+                                  borderRadius:5,background:c+'15',color:c,
+                                  textDecoration:'none',border:`1px solid ${c}30`}}>
+                                <i className="ti ti-link" style={{fontSize:9}}/>
+                                {label}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -659,15 +706,28 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
     title:task?.title||'',description:task?.description||'',
     assigneeIds:task?getIds(task):[],entity:task?.entity||'',
     priority:task?.priority||'Medium',status:task?.status||'To Do',
-    dueDate:task?.dueDate||'',recurring:task?.recurring||'',subtasks:task?.subtasks||[],
+    dueDate:task?.dueDate||'',recurring:task?.recurring||'',
+    subtasks:task?.subtasks||[],
+    links:task?.links||[],
   });
   const [newSt,setNewSt]=useState('');
+  const [newLinkUrl,setNewLinkUrl]=useState('');
+  const [newLinkLabel,setNewLinkLabel]=useState('');
   const s=(k,v)=>setF(x=>({...x,[k]:v}));
   const toggleA=id=>s('assigneeIds',f.assigneeIds.includes(id)?f.assigneeIds.filter(x=>x!==id):[...f.assigneeIds,id]);
   const addSub=()=>{if(!newSt.trim())return;s('subtasks',[...f.subtasks,{id:mkId(),title:newSt.trim(),done:false}]);setNewSt('');};
   const toggleSub=id=>s('subtasks',f.subtasks.map(st=>st.id===id?{...st,done:!st.done}:st));
   const delSub=id=>s('subtasks',f.subtasks.filter(st=>st.id!==id));
   const moveSub=(i,dir)=>{const a=[...f.subtasks];const ni=i+dir;if(ni<0||ni>=a.length)return;[a[i],a[ni]]=[a[ni],a[i]];s('subtasks',a);};
+
+  const addLink=()=>{
+    const url=newLinkUrl.trim();
+    if(!url) return;
+    const fullUrl=url.startsWith('http')?url:'https://'+url;
+    s('links',[...(f.links||[]),{id:mkId(),url:fullUrl,label:newLinkLabel.trim()}]);
+    setNewLinkUrl(''); setNewLinkLabel('');
+  };
+  const delLink=id=>s('links',(f.links||[]).filter(l=>l.id!==id));
   const handleCreateNext=()=>{
     let nd='';
     if(f.dueDate&&f.recurring){
@@ -769,6 +829,67 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           </button>
         </div>
       </div>
+
+      {/* Links */}
+      <div style={{borderTop:`1px solid ${TBORDER}`,paddingTop:14,marginTop:4}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <span style={{fontSize:12,fontWeight:700,color:TXT,textTransform:'uppercase',letterSpacing:'0.05em'}}>
+            Links
+          </span>
+          {(f.links||[]).length>0&&(
+            <span style={{fontSize:11,color:TXT2}}>{(f.links||[]).length} attached</span>
+          )}
+        </div>
+        {(f.links||[]).length>0&&(
+          <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
+            {(f.links||[]).map(link=>{
+              const c=getLinkColor(link.url);
+              const label=link.label||getDomain(link.url);
+              return (
+                <div key={link.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
+                  borderRadius:9,background:'#F7F8FD',border:`1px solid ${BORDER}`}}>
+                  <div style={{width:24,height:24,borderRadius:6,background:c+'18',
+                    display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <i className="ti ti-link" style={{fontSize:12,color:c}}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:TXT,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label}</div>
+                    <div style={{fontSize:10,color:TXT2,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{link.url}</div>
+                  </div>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer"
+                    style={{color:c,fontSize:11,fontWeight:600,textDecoration:'none',
+                      padding:'3px 8px',borderRadius:6,background:c+'15',whiteSpace:'nowrap'}}
+                    onClick={e=>e.stopPropagation()}>
+                    Open ↗
+                  </a>
+                  <button onClick={()=>delLink(link.id)}
+                    style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',padding:'2px 4px'}}>
+                    <i className="ti ti-x" style={{fontSize:11}}/>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+          <Inp value={newLinkUrl} onChange={e=>setNewLinkUrl(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addLink())}
+            placeholder="Paste URL (Canva, Google Drive, OneDrive…)" style={{fontSize:12}}/>
+          <div style={{display:'flex',gap:6}}>
+            <Inp value={newLinkLabel} onChange={e=>setNewLinkLabel(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addLink())}
+              placeholder="Label (optional, e.g. Campaign Brief)" style={{fontSize:12}}/>
+            <button onClick={addLink} style={{background:'#6366f1',color:'white',border:'none',
+              cursor:'pointer',padding:'8px 14px',borderRadius:9,fontSize:12,
+              fontFamily:F,fontWeight:600,whiteSpace:'nowrap'}}>
+              + Add
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div style={{display:'flex',justifyContent:'space-between',marginTop:18,paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
         {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
