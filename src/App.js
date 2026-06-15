@@ -72,8 +72,30 @@ const getLinkColor = url => {
   return '#6366f1';
 };
 
+// Compress image to max 800px and JPEG 70% — keeps base64 small enough for storage
+const compressImage=(dataUrl,maxPx=800,quality=0.7)=>new Promise(resolve=>{
+  const img=new Image();
+  img.onload=()=>{
+    let w=img.width,h=img.height;
+    if(w>maxPx||h>maxPx){
+      if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}
+      else{w=Math.round(w*maxPx/h);h=maxPx;}
+    }
+    const c=document.createElement('canvas');
+    c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    resolve(c.toDataURL('image/jpeg',quality));
+  };
+  img.onerror=()=>resolve(dataUrl); // fallback to original if compression fails
+  img.src=dataUrl;
+});
+
 const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c}));
-const sv = async(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch{} };
+const sv = async(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){
+  if(e.name==='QuotaExceededError'||e.code===22){
+    alert('Storage full — try removing some images from tasks to free up space.');
+  }
+} };
 const ld = async(k,fb)=>{ try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r)}catch{} return fb; };
 
 /* ── Shared UI ─────────────────────────────────────────────────────────────── */
@@ -773,8 +795,21 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
       if(!file.type.startsWith('image/')) return;
       const reader=new FileReader();
       reader.onload=ev=>{
-        const img={id:mkId(),data:ev.target.result,name:file.name};
-        setF(x=>({...x,images:[...(x.images||[]),img]}));
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=900;
+          let w=img.width,h=img.height;
+          if(w>MAX||h>MAX){
+            if(w>h){h=Math.round(h*(MAX/w));w=MAX;}
+            else{w=Math.round(w*(MAX/h));h=MAX;}
+          }
+          const canvas=document.createElement('canvas');
+          canvas.width=w;canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          const data=canvas.toDataURL('image/jpeg',0.72);
+          setF(x=>({...x,images:[...(x.images||[]),{id:mkId(),data,name:file.name}]}));
+        };
+        img.src=ev.target.result;
       };
       reader.readAsDataURL(file);
     });
