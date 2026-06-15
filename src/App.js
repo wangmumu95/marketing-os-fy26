@@ -773,7 +773,8 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
       if(!file.type.startsWith('image/')) return;
       const reader=new FileReader();
       reader.onload=ev=>{
-        s('images',prev=>[...(prev||[]),{id:mkId(),data:ev.target.result,name:file.name}]);
+        const img={id:mkId(),data:ev.target.result,name:file.name};
+        setF(x=>({...x,images:[...(x.images||[]),img]}));
       };
       reader.readAsDataURL(file);
     });
