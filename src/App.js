@@ -314,7 +314,9 @@ export default function App() {
   const [expenses,setExp]= useState({});
   const [leads,setLeads] = useState({});
   const [budgets,setBudgets]=useState({});
-  const [events,setEvents]=useState([]);
+  const [events,setEvents]       =useState([]);
+  const [leadRecords,setLeadRecs]=useState({});
+  const [closedDeals,setClosedDeals]=useState({});
   const [fy,setFy]       = useState(fyNow());
   const [ready,setReady] = useState(false);
   const [authed,setAuthed]= useState(()=>localStorage.getItem('mkt_auth')==='true');
@@ -326,11 +328,13 @@ export default function App() {
   useEffect(()=>{
     if(!authed){ setReady(false); return; }
     (async()=>{
-      const [t,tk,k,e,l,b,ev]=await Promise.all([
+      const [t,tk,k,e,l,b,ev,lr,cd]=await Promise.all([
         ld('mkt_team',DEFAULT_TEAM),ld('mkt_tasks',[]),
-        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),ld('mkt_budgets',{}),ld('mkt_events',[]),
+        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),ld('mkt_budgets',{}),
+        ld('mkt_events',[]),ld('mkt_lead_recs',{}),ld('mkt_closed_deals',{}),
       ]);
-      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setBudgets(b);setEvents(ev);setReady(true);
+      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setBudgets(b);
+      setEvents(ev);setLeadRecs(lr);setClosedDeals(cd);setReady(true);
     })();
   },[authed]);
 
@@ -349,15 +353,18 @@ export default function App() {
   const svExp   = e=>{setExp(e);  sv('mkt_exp',e);};
   const svLeads = l=>{setLeads(l);sv('mkt_leads',l);};
   const svBudgets=b=>{setBudgets(b);sv('mkt_budgets',b);};
-  const svEvents =e=>{setEvents(e); sv('mkt_events',e);};
+  const svEvents   =e=>{setEvents(e);    sv('mkt_events',e);};
+  const svLeadRecs =r=>{setLeadRecs(r);  sv('mkt_lead_recs',r);};
+  const svClosedDeals=d=>{setClosedDeals(d);sv('mkt_closed_deals',d);};
 
   const NAV=[
-    {id:'dashboard',icon:'ti-layout-dashboard',label:'Dashboard'},
-    {id:'tasks',    icon:'ti-layout-kanban',    label:'Tasks'},
-    {id:'calendar', icon:'ti-calendar',         label:'Calendar'},
-    {id:'kpis',     icon:'ti-target',           label:'KPIs'},
-    {id:'finance',  icon:'ti-report-money',     label:'Finance'},
-    {id:'settings', icon:'ti-settings',         label:'Settings'},
+    {id:'dashboard', icon:'ti-layout-dashboard', label:'Dashboard'},
+    {id:'tasks',     icon:'ti-layout-kanban',    label:'Tasks'},
+    {id:'calendar',  icon:'ti-calendar',         label:'Calendar'},
+    {id:'kpis',      icon:'ti-target',           label:'KPIs'},
+    {id:'finance',   icon:'ti-report-money',     label:'Finance'},
+    {id:'conversion',icon:'ti-arrows-exchange',  label:'Conversion'},
+    {id:'settings',  icon:'ti-settings',         label:'Settings'},
   ];
 
   return (
@@ -443,10 +450,11 @@ export default function App() {
       <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
-        {page==='calendar'&& <CalendarPage team={team} tasks={tasks} events={events} saveEvents={svEvents}/>}
-        {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
-        {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
-        {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
+        {page==='calendar'&&  <CalendarPage team={team} tasks={tasks} events={events} saveEvents={svEvents}/>}
+        {page==='kpis'&&      <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
+        {page==='finance'&&   <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
+        {page==='conversion'&&<ConversionPage leadRecords={leadRecords} saveLeadRecords={svLeadRecs} closedDeals={closedDeals} saveClosedDeals={svClosedDeals}/>}
+        {page==='settings'&&  <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
       </div>
     </div>
   );
@@ -1915,6 +1923,467 @@ function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
         <div style={{display:'flex',gap:8}}>
           <GhostBtn onClick={onClose}>Cancel</GhostBtn>
           <PBtn onClick={()=>f.title&&f.date&&onSave(f)} style={{background:color}}>Save event</PBtn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ── Conversion ─────────────────────────────────────────────────────────────── */
+const LEAD_SOURCES=['Website','Referral','Social Media','Cold Call','Walk-in','Event','Other'];
+
+function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals}) {
+  const now=new Date();
+  const curMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const [tab,setTab]        =useState('leads');
+  const [month,setMonth]    =useState(curMonth);
+  const [leadModal,setLM]   =useState(null);
+  const [dealModal,setDM]   =useState(null);
+
+  const mLeads=leadRecords[month]||[];
+  const mDeals=closedDeals[month]||[];
+
+  // Normalisation helpers for matching
+  const nPhone=p=>(p||'').replace(/\D/g,'');
+  const nStr  =s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const findMatch=(deal,leads)=>leads.find(lead=>{
+    if(nPhone(deal.phone)&&nPhone(lead.phone)&&nPhone(deal.phone)===nPhone(lead.phone)) return true;
+    if(nStr(deal.company).length>2&&nStr(lead.company).length>2&&nStr(deal.company)===nStr(lead.company)) return true;
+    if(nStr(deal.name).length>2&&nStr(lead.name).length>2&&nStr(deal.name)===nStr(lead.name)) return true;
+    return false;
+  });
+
+  // Auto-match all unprocessed deals
+  const runAutoMatch=()=>{
+    const updated=mDeals.map(deal=>{
+      if(deal.fromMarketing!==undefined&&deal.fromMarketing!==null) return deal;
+      const match=findMatch(deal,mLeads);
+      return match?{...deal,matchedLeadId:match.id,fromMarketing:true}:deal;
+    });
+    saveClosedDeals({...closedDeals,[month]:updated});
+  };
+
+  // Lead CRUD
+  const saveLead=(d,id)=>{
+    const updated=id?mLeads.map(l=>l.id===id?{...l,...d}:l):[...mLeads,{...d,id:mkId()}];
+    saveLeadRecords({...leadRecords,[month]:updated});setLM(null);
+  };
+  const delLead=id=>{saveLeadRecords({...leadRecords,[month]:mLeads.filter(l=>l.id!==id)});setLM(null);};
+
+  // Deal CRUD
+  const saveDeal=(d,id)=>{
+    const updated=id?mDeals.map(dl=>dl.id===id?{...dl,...d}:dl):[...mDeals,{...d,id:mkId()}];
+    saveClosedDeals({...closedDeals,[month]:updated});setDM(null);
+  };
+  const delDeal=id=>{saveClosedDeals({...closedDeals,[month]:mDeals.filter(d=>d.id!==id)});setDM(null);};
+
+  // Mark a deal manually
+  const markDeal=(id,val)=>{
+    saveClosedDeals({...closedDeals,[month]:mDeals.map(d=>d.id===id?{...d,fromMarketing:val}:d)});
+  };
+
+  // Analytics
+  const fromMkt   =mDeals.filter(d=>d.fromMarketing===true);
+  const notMkt    =mDeals.filter(d=>d.fromMarketing===false);
+  const unconfirmed=mDeals.filter(d=>d.fromMarketing===null||d.fromMarketing===undefined);
+  const mktValue  =fromMkt.reduce((s,d)=>s+(+d.contractValue||0),0);
+  const convRate  =mLeads.length>0?((fromMkt.length/mLeads.length)*100).toFixed(1):null;
+
+  // Per-salesperson
+  const spMap={};
+  mDeals.forEach(d=>{
+    const sp=d.salesperson||'Unknown';
+    if(!spMap[sp]) spMap[sp]={total:0,fromMkt:0,value:0};
+    spMap[sp].total++;
+    if(d.fromMarketing){spMap[sp].fromMkt++;spMap[sp].value+=(+d.contractValue||0);}
+  });
+  const spRows=Object.entries(spMap).sort((a,b)=>b[1].value-a[1].value);
+
+  // Month options (last 24 months)
+  const monthOpts=[];
+  for(let i=0;i<24;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthOpts.push({k,label:d.toLocaleDateString('en-SG',{month:'long',year:'numeric'})});
+  }
+
+  return (
+    <div>
+      <PageHeader title="Lead Conversion"/>
+
+      {/* Month picker */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
+        <span style={{fontSize:13,color:TXT2,fontWeight:500}}>Month:</span>
+        <Sel value={month} onChange={e=>setMonth(e.target.value)} style={{width:'auto'}}>
+          {monthOpts.map(({k,label})=><option key={k} value={k}>{label}</option>)}
+        </Sel>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',gap:6,marginBottom:20}}>
+        {[['leads','Marketing Leads'],['closed','Closed Customers'],['matching','Matching & Analytics']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{
+            padding:'8px 18px',fontSize:13,fontWeight:tab===id?700:500,
+            border:`1.5px solid ${tab===id?'#6366f1':BORDER}`,borderRadius:99,
+            background:tab===id?'#6366f1':CARD,cursor:'pointer',
+            color:tab===id?'white':TXT2,fontFamily:F,
+            boxShadow:tab===id?'0 2px 8px rgba(99,102,241,0.3)':'none'}}>
+            {label}
+            {id==='leads'&&mLeads.length>0&&<span style={{marginLeft:6,background:'rgba(255,255,255,0.25)',
+              fontSize:10,padding:'0 6px',borderRadius:99}}>{mLeads.length}</span>}
+            {id==='closed'&&mDeals.length>0&&<span style={{marginLeft:6,background:'rgba(255,255,255,0.25)',
+              fontSize:10,padding:'0 6px',borderRadius:99}}>{mDeals.length}</span>}
+            {id==='matching'&&unconfirmed.length>0&&<span style={{marginLeft:6,background:'#FEE9E9',
+              color:'#dc2626',fontSize:10,padding:'0 6px',borderRadius:99,fontWeight:700}}>
+              {unconfirmed.length} pending</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── LEADS TAB ── */}
+      {tab==='leads'&&(
+        <>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <span style={{fontSize:13,color:TXT2}}>{mLeads.length} leads this month</span>
+            <PBtn onClick={()=>setLM({})}>
+              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add lead
+            </PBtn>
+          </div>
+          {mLeads.length===0?(
+            <Card style={{padding:'48px',textAlign:'center'}}>
+              <i className="ti ti-users" style={{fontSize:32,color:TXT2,display:'block',marginBottom:12}} aria-hidden/>
+              <p style={{color:TXT2,fontSize:14,margin:'0 0 12px'}}>No leads entered for this month yet.</p>
+              <button onClick={()=>setLM({})} style={{background:'#6366f1',color:'white',border:'none',
+                cursor:'pointer',padding:'8px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
+                + Add first lead
+              </button>
+            </Card>
+          ):(
+            <Card>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    {['#','Name','Company','Phone','Source','Notes',''].map(h=><th key={h} style={TH}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {mLeads.map((l,i)=>(
+                      <tr key={l.id} style={{borderBottom:`1px solid ${TBORDER}`,background:i%2===0?CARD:'#FAFBFF'}}>
+                        <td style={{...TD,color:TXT2,fontSize:11}}>{i+1}</td>
+                        <td style={{...TD,fontWeight:600}}>{l.name||'—'}</td>
+                        <td style={TD}>{l.company||'—'}</td>
+                        <td style={TD}>{l.phone||'—'}</td>
+                        <td style={TD}>
+                          {l.source&&<span style={{background:'#EEEEFF',color:'#6366f1',fontSize:10,
+                            fontWeight:600,padding:'2px 8px',borderRadius:99}}>{l.source}</span>}
+                        </td>
+                        <td style={{...TD,color:TXT2,maxWidth:200,overflow:'hidden',
+                          textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.notes||'—'}</td>
+                        <td style={TD}>
+                          <button onClick={()=>setLM({edit:l})} style={{background:'#EEEEFF',
+                            color:'#6366f1',border:'none',cursor:'pointer',padding:'4px 10px',
+                            borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── CLOSED CUSTOMERS TAB ── */}
+      {tab==='closed'&&(
+        <>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <span style={{fontSize:13,color:TXT2}}>{mDeals.length} closed customers · Total value: {mDeals.reduce((s,d)=>s+(+d.contractValue||0),0)>0?`$${mDeals.reduce((s,d)=>s+(+d.contractValue||0),0).toLocaleString()}`:'—'}</span>
+            <PBtn onClick={()=>setDM({})}>
+              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add customer
+            </PBtn>
+          </div>
+          {mDeals.length===0?(
+            <Card style={{padding:'48px',textAlign:'center'}}>
+              <i className="ti ti-building" style={{fontSize:32,color:TXT2,display:'block',marginBottom:12}} aria-hidden/>
+              <p style={{color:TXT2,fontSize:14,margin:'0 0 12px'}}>No closed customers this month yet.</p>
+              <button onClick={()=>setDM({})} style={{background:'#6366f1',color:'white',border:'none',
+                cursor:'pointer',padding:'8px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
+                + Add first customer
+              </button>
+            </Card>
+          ):(
+            <Card>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    {['#','Name','Company','Phone','Contract Value','Salesperson','From Marketing?',''].map(h=><th key={h} style={TH}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {mDeals.map((d,i)=>{
+                      const match=d.matchedLeadId?mLeads.find(l=>l.id===d.matchedLeadId):null;
+                      return (
+                        <tr key={d.id} style={{borderBottom:`1px solid ${TBORDER}`,background:i%2===0?CARD:'#FAFBFF'}}>
+                          <td style={{...TD,color:TXT2,fontSize:11}}>{i+1}</td>
+                          <td style={{...TD,fontWeight:600}}>{d.name||'—'}</td>
+                          <td style={TD}>{d.company||'—'}</td>
+                          <td style={TD}>{d.phone||'—'}</td>
+                          <td style={{...TD,fontWeight:600,color:'#10b981'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
+                          <td style={TD}>{d.salesperson||'—'}</td>
+                          <td style={TD}>
+                            {d.fromMarketing===true&&<span style={{background:'#E0F7EF',color:'#047857',
+                              fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:99}}>
+                              ✓ Yes{match?` (matched: ${match.name||match.company})`:' (manual)'}
+                            </span>}
+                            {d.fromMarketing===false&&<span style={{background:'#F1F5F9',color:TXT2,
+                              fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:99}}>
+                              ✗ No
+                            </span>}
+                            {(d.fromMarketing===null||d.fromMarketing===undefined)&&
+                              <span style={{fontSize:11,color:'#f59e0b',fontWeight:600}}>Unconfirmed</span>}
+                          </td>
+                          <td style={TD}>
+                            <button onClick={()=>setDM({edit:d})} style={{background:'#EEEEFF',
+                              color:'#6366f1',border:'none',cursor:'pointer',padding:'4px 10px',
+                              borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── MATCHING & ANALYTICS TAB ── */}
+      {tab==='matching'&&(
+        <>
+          {/* Summary cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
+            {[
+              {l:'Marketing leads',v:mLeads.length||'—',i:'ti-user-plus',c:'#6366f1',bg:'#EEEEFF'},
+              {l:'Closed (from marketing)',v:fromMkt.length||'—',i:'ti-circle-check',c:'#10b981',bg:'#E0F7EF'},
+              {l:'Conversion rate',v:convRate?`${convRate}%`:'—',i:'ti-percentage',c:'#0891b2',bg:'#E0F5FB'},
+              {l:'Total contract value',v:mktValue?`$${mktValue.toLocaleString()}`:'—',i:'ti-cash',c:'#f59e0b',bg:'#FEF4DC'},
+            ].map(({l,v,i,c,bg})=>(
+              <Card key={l} style={{padding:'14px 16px'}}>
+                <div style={{width:30,height:30,borderRadius:8,background:bg,
+                  display:'flex',alignItems:'center',justifyContent:'center',marginBottom:8}}>
+                  <i className={`ti ${i}`} style={{fontSize:14,color:c}} aria-hidden/>
+                </div>
+                <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:3,
+                  textTransform:'uppercase',letterSpacing:'0.04em'}}>{l}</div>
+                <div style={{fontSize:20,fontWeight:700,color:TXT}}>{v}</div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Auto-match button */}
+          <Card style={{padding:'14px 18px',marginBottom:16,display:'flex',
+            alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <span style={{fontSize:13,fontWeight:600,color:TXT}}>Auto-match leads to closed customers</span>
+              <p style={{margin:'3px 0 0',fontSize:12,color:TXT2}}>
+                Matches by phone number, company name, or contact name. {unconfirmed.length} unconfirmed remaining.
+              </p>
+            </div>
+            <PBtn onClick={runAutoMatch} style={{whiteSpace:'nowrap'}}>
+              <i className="ti ti-arrows-exchange" style={{fontSize:14,marginRight:4}} aria-hidden/>
+              Run auto-match
+            </PBtn>
+          </Card>
+
+          {/* Matching table — show unconfirmed first */}
+          {mDeals.length>0&&(
+            <Card style={{marginBottom:16}}>
+              <div style={{padding:'14px 18px',borderBottom:`1px solid ${TBORDER}`,fontSize:13,fontWeight:700,color:TXT}}>
+                Closed customers — confirm marketing source
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    {['Customer','Company','Salesperson','Contract Value','Matched Lead','From Marketing?'].map(h=><th key={h} style={TH}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {[...mDeals].sort((a,b)=>{
+                      const aConf=a.fromMarketing!==null&&a.fromMarketing!==undefined;
+                      const bConf=b.fromMarketing!==null&&b.fromMarketing!==undefined;
+                      return aConf===bConf?0:aConf?1:-1;
+                    }).map((d,i)=>{
+                      const match=d.matchedLeadId?mLeads.find(l=>l.id===d.matchedLeadId):null;
+                      const confirmed=d.fromMarketing!==null&&d.fromMarketing!==undefined;
+                      return (
+                        <tr key={d.id} style={{borderBottom:`1px solid ${TBORDER}`,
+                          background:confirmed?(d.fromMarketing?'#F0FDF4':'#FAFBFF'):'#FFFAEC'}}>
+                          <td style={{...TD,fontWeight:600}}>{d.name||'—'}</td>
+                          <td style={TD}>{d.company||'—'}</td>
+                          <td style={TD}>{d.salesperson||'—'}</td>
+                          <td style={{...TD,fontWeight:600,color:'#10b981'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
+                          <td style={TD}>
+                            {match?(
+                              <span style={{fontSize:11,color:'#047857',fontWeight:500}}>
+                                {match.name||match.company||'Lead #{match.id.slice(0,4)}'}
+                                {match.phone&&` · ${match.phone}`}
+                              </span>
+                            ):<span style={{fontSize:11,color:TXT2}}>No match found</span>}
+                          </td>
+                          <td style={TD}>
+                            {!confirmed?(
+                              <div style={{display:'flex',gap:6}}>
+                                <button onClick={()=>markDeal(d.id,true)}
+                                  style={{background:'#E0F7EF',color:'#047857',border:'none',cursor:'pointer',
+                                    padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>
+                                  ✓ Yes
+                                </button>
+                                <button onClick={()=>markDeal(d.id,false)}
+                                  style={{background:'#F1F5F9',color:TXT2,border:'none',cursor:'pointer',
+                                    padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>
+                                  ✗ No
+                                </button>
+                              </div>
+                            ):(
+                              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                <span style={{fontSize:11,fontWeight:700,
+                                  color:d.fromMarketing?'#047857':TXT2}}>
+                                  {d.fromMarketing?'✓ Yes':'✗ No'}
+                                </span>
+                                <button onClick={()=>markDeal(d.id,null)}
+                                  style={{background:'none',border:'none',cursor:'pointer',
+                                    color:TXT2,fontSize:10,textDecoration:'underline',fontFamily:F}}>
+                                  Reset
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Per-salesperson breakdown */}
+          {spRows.length>0&&(
+            <Card>
+              <div style={{padding:'14px 18px',borderBottom:`1px solid ${TBORDER}`,fontSize:13,fontWeight:700,color:TXT}}>
+                Salesperson breakdown
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    {['Salesperson','Total closed','From marketing','Closing rate','Contract value (mkt)'].map(h=><th key={h} style={TH}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {spRows.map(([sp,s],i)=>{
+                      const rate=mLeads.length>0?((s.fromMkt/mLeads.length)*100).toFixed(1):null;
+                      return (
+                        <tr key={sp} style={{borderBottom:`1px solid ${TBORDER}`,
+                          background:i%2===0?CARD:'#FAFBFF'}}>
+                          <td style={{...TD,fontWeight:700}}>{sp}</td>
+                          <td style={TD}>{s.total}</td>
+                          <td style={TD}>{s.fromMkt}</td>
+                          <td style={TD}>
+                            {rate&&(
+                              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                <div style={{flex:1,height:5,borderRadius:3,background:'#EEF1F9',
+                                  overflow:'hidden',minWidth:60}}>
+                                  <div style={{width:`${Math.min(100,rate)}%`,height:'100%',
+                                    background:'#6366f1',borderRadius:3}}/>
+                                </div>
+                                <span style={{fontSize:12,fontWeight:700,color:'#6366f1',
+                                  whiteSpace:'nowrap'}}>{rate}%</span>
+                              </div>
+                            )}
+                            {!rate&&<span style={{color:TXT2}}>—</span>}
+                          </td>
+                          <td style={{...TD,fontWeight:700,color:'#10b981'}}>
+                            {s.value>0?`$${s.value.toLocaleString()}`:'—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Lead modal */}
+      {leadModal&&(
+        <LeadModal lead={leadModal.edit} onClose={()=>setLM(null)}
+          onSave={d=>saveLead(d,leadModal.edit?.id)} onDelete={leadModal.edit?()=>delLead(leadModal.edit.id):null}/>
+      )}
+
+      {/* Deal modal */}
+      {dealModal&&(
+        <DealModal deal={dealModal.edit} onClose={()=>setDM(null)}
+          onSave={d=>saveDeal(d,dealModal.edit?.id)} onDelete={dealModal.edit?()=>delDeal(dealModal.edit.id):null}/>
+      )}
+    </div>
+  );
+}
+
+function LeadModal({lead,onClose,onSave,onDelete}) {
+  const [f,setF]=useState({name:lead?.name||'',company:lead?.company||'',
+    phone:lead?.phone||'',source:lead?.source||'',notes:lead?.notes||''});
+  const s=(k,v)=>setF(x=>({...x,[k]:v}));
+  return (
+    <Modal title={lead?'Edit lead':'New lead'} onClose={onClose}>
+      <Grid2>
+        <Lbl s="Contact name"><Inp value={f.name} onChange={e=>s('name',e.target.value)} placeholder="Full name"/></Lbl>
+        <Lbl s="Company"><Inp value={f.company} onChange={e=>s('company',e.target.value)} placeholder="Company name"/></Lbl>
+        <Lbl s="Phone number"><Inp value={f.phone} onChange={e=>s('phone',e.target.value)} placeholder="+65 XXXX XXXX"/></Lbl>
+        <Lbl s="Source">
+          <Sel value={f.source} onChange={e=>s('source',e.target.value)}>
+            <option value="">Select source</option>
+            {LEAD_SOURCES.map(src=><option key={src} value={src}>{src}</option>)}
+          </Sel>
+        </Lbl>
+      </Grid2>
+      <Lbl s="Notes (optional)">
+        <Inp value={f.notes} onChange={e=>s('notes',e.target.value)} placeholder="Any additional info"/>
+      </Lbl>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:16,paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
+        {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
+        <div style={{display:'flex',gap:8}}>
+          <GhostBtn onClick={onClose}>Cancel</GhostBtn>
+          <PBtn onClick={()=>(f.name||f.company)&&onSave(f)}>Save lead</PBtn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DealModal({deal,onClose,onSave,onDelete}) {
+  const [f,setF]=useState({name:deal?.name||'',company:deal?.company||'',
+    phone:deal?.phone||'',contractValue:deal?.contractValue||'',
+    salesperson:deal?.salesperson||'',notes:deal?.notes||''});
+  const s=(k,v)=>setF(x=>({...x,[k]:v}));
+  return (
+    <Modal title={deal?'Edit closed customer':'New closed customer'} onClose={onClose}>
+      <Grid2>
+        <Lbl s="Contact name"><Inp value={f.name} onChange={e=>s('name',e.target.value)} placeholder="Full name"/></Lbl>
+        <Lbl s="Company"><Inp value={f.company} onChange={e=>s('company',e.target.value)} placeholder="Company name"/></Lbl>
+        <Lbl s="Phone number"><Inp value={f.phone} onChange={e=>s('phone',e.target.value)} placeholder="+65 XXXX XXXX"/></Lbl>
+        <Lbl s="Contract value ($)"><Inp type="number" value={f.contractValue} onChange={e=>s('contractValue',e.target.value)} placeholder="0"/></Lbl>
+      </Grid2>
+      <Lbl s="Salesperson">
+        <Inp value={f.salesperson} onChange={e=>s('salesperson',e.target.value)} placeholder="Salesperson name"/>
+      </Lbl>
+      <Lbl s="Notes (optional)">
+        <Inp value={f.notes} onChange={e=>s('notes',e.target.value)} placeholder="Any additional info"/>
+      </Lbl>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:16,paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
+        {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
+        <div style={{display:'flex',gap:8}}>
+          <GhostBtn onClick={onClose}>Cancel</GhostBtn>
+          <PBtn onClick={()=>(f.name||f.company)&&onSave(f)}>Save customer</PBtn>
         </div>
       </div>
     </Modal>
