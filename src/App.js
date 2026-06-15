@@ -447,50 +447,31 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
             const {a,bg}=EC[e]||{a:'#94a3b8',bg:'#F1F5F9'};
             return (
               <div key={e} style={{marginBottom:14}}>
-                {/* Entity label */}
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
                   <div style={{width:8,height:8,borderRadius:2,background:a,flexShrink:0}}/>
                   <span style={{fontSize:12,fontWeight:700,color:TXT}}>{e}</span>
                   {ek.length===0&&<span style={{fontSize:10,color:TXT2,fontWeight:400}}>— no KPIs</span>}
+                  {ek.length>0&&<span style={{fontSize:10,color:TXT2,marginLeft:'auto'}}>
+                    {ek.filter(k=>k.done).length}/{ek.length}
+                  </span>}
                 </div>
-                {/* KPI list */}
-                {ek.map(k=>{
-                  const pct=k.target>0?Math.min(100,Math.round((k.current/k.target)*100)):0;
-                  const done=pct>=100;
-                  const unit=KPI_UNITS[k.type]||'';
-                  const pre=unit==='$';
-                  return (
-                    <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,
-                      padding:'4px 8px',borderRadius:7,marginBottom:3,
-                      background:done?'#F0FDF4':'#F7F8FD',
-                      border:`1px solid ${done?'#BBF7D0':BORDER}`}}>
-                      {/* Check or circle */}
-                      <div style={{width:16,height:16,borderRadius:'50%',flexShrink:0,
-                        background:done?'#10b981':'transparent',
-                        border:`1.5px solid ${done?'#10b981':'#CBD5E1'}`,
-                        display:'flex',alignItems:'center',justifyContent:'center'}}>
-                        {done&&<i className="ti ti-check" style={{fontSize:9,color:'white'}} aria-hidden/>}
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <span style={{fontSize:11,fontWeight:500,
-                          color:done?'#047857':TXT,
-                          textDecoration:done?'none':'none'}}>
-                          {k.type}
-                        </span>
-                        {!done&&k.target>0&&(
-                          <span style={{fontSize:10,color:TXT2,marginLeft:6}}>
-                            {pre?unit:''}{Number(k.current||0).toLocaleString()}{!pre?unit:''} / {pre?unit:''}{Number(k.target||0).toLocaleString()}{!pre?unit:''} ({pct}%)
-                          </span>
-                        )}
-                        {done&&(
-                          <span style={{fontSize:10,color:'#10b981',marginLeft:6,fontWeight:600}}>
-                            Achieved
-                          </span>
-                        )}
-                      </div>
+                {ek.map(k=>(
+                  <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,
+                    padding:'4px 8px',borderRadius:7,marginBottom:3,
+                    background:k.done?'#F0FDF4':'#F7F8FD',
+                    border:`1px solid ${k.done?'#BBF7D0':BORDER}`}}>
+                    <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
+                      background:k.done?'#10b981':'transparent',
+                      border:`1.5px solid ${k.done?'#10b981':'#CBD5E1'}`,
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      {k.done&&<i className="ti ti-check" style={{fontSize:8,color:'white'}} aria-hidden/>}
                     </div>
-                  );
-                })}
+                    <span style={{fontSize:11,fontWeight:500,color:k.done?'#047857':TXT,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {k.title||k.type||'KPI'}
+                    </span>
+                  </div>
+                ))}
               </div>
             );
           })}
@@ -808,18 +789,30 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
 function KpisPage({team,kpis,saveKpis,fy}) {
   const [entity,setEntity]=useState(ENTITIES[0]);
   const [modal,setModal]=useState(null);
+
   const ek=kpis.filter(k=>k.entity===entity);
-  const addKpi=d=>{saveKpis([...kpis,{...d,id:mkId()}]);setModal(null);};
-  const upKpi=(id,d)=>{saveKpis(kpis.map(k=>k.id===id?{...k,...d}:k));setModal(null);};
-  const delKpi=id=>{saveKpis(kpis.filter(k=>k.id!==id));setModal(null);};
+  const addKpi =d=>{saveKpis([...kpis,{...d,id:mkId()}]);setModal(null);};
+  const upKpi  =(id,d)=>{saveKpis(kpis.map(k=>k.id===id?{...k,...d}:k));setModal(null);};
+  const delKpi =id=>{saveKpis(kpis.filter(k=>k.id!==id));setModal(null);};
+  const toggleDone=id=>{saveKpis(kpis.map(k=>k.id===id?{...k,done:!k.done}:k));};
+
+  const doneCount=ek.filter(k=>k.done).length;
+
   return (
     <div>
-      <PageHeader title={`KPIs — ${fyLabel(fy)}`} action={<PBtn onClick={()=>setModal('add')}><i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add KPI</PBtn>}/>
+      <PageHeader title={`KPIs — ${fyLabel(fy)}`} action={
+        <PBtn onClick={()=>setModal('add')}>
+          <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add KPI
+        </PBtn>
+      }/>
+
+      {/* Entity tabs */}
       <div style={{display:'flex',gap:6,marginBottom:20}}>
         {ENTITIES.map(e=>{
           const {a,bg}=EC[e]||{a:'#94a3b8',bg:'#F1F5F9'};
           const active=e===entity;
           const cnt=kpis.filter(k=>k.entity===e).length;
+          const doneCnt=kpis.filter(k=>k.entity===e&&k.done).length;
           return (
             <button key={e} onClick={()=>setEntity(e)} style={{
               padding:'7px 16px',fontSize:12,fontWeight:active?700:500,
@@ -828,77 +821,113 @@ function KpisPage({team,kpis,saveKpis,fy}) {
               fontFamily:F,display:'flex',alignItems:'center',gap:6,
               boxShadow:active?`0 2px 8px ${a}40`:'none'}}>
               {e}
-              {cnt>0&&<span style={{background:active?'rgba(255,255,255,0.25)':bg,color:active?'white':a,fontSize:10,fontWeight:700,padding:'0 6px',borderRadius:99}}>{cnt}</span>}
+              {cnt>0&&(
+                <span style={{background:active?'rgba(255,255,255,0.25)':bg,
+                  color:active?'white':a,fontSize:10,fontWeight:700,
+                  padding:'0 6px',borderRadius:99}}>
+                  {doneCnt}/{cnt}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+
       {ek.length===0?(
         <Card style={{padding:'48px',textAlign:'center'}}>
-          <div style={{width:48,height:48,borderRadius:14,background:'#EEF1F9',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}>
+          <div style={{width:48,height:48,borderRadius:14,background:'#EEF1F9',
+            display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}>
             <i className="ti ti-target" style={{fontSize:22,color:TXT2}} aria-hidden/>
           </div>
-          <p style={{color:TXT2,fontSize:14,margin:'0 0 12px'}}>No KPIs set for {entity} yet.</p>
-          <button onClick={()=>setModal('add')} style={{background:'#6366f1',color:'white',border:'none',cursor:'pointer',padding:'8px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>+ Add first KPI</button>
+          <p style={{color:TXT2,fontSize:14,margin:'0 0 12px'}}>
+            No KPIs set for {entity} yet.
+          </p>
+          <button onClick={()=>setModal('add')} style={{background:'#6366f1',color:'white',
+            border:'none',cursor:'pointer',padding:'8px 20px',borderRadius:10,
+            fontSize:13,fontWeight:600,fontFamily:F}}>+ Add first KPI</button>
         </Card>
       ):(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}}>
-          {ek.map(k=>{
-            const pct=k.target>0?Math.min(100,Math.round((k.current/k.target)*100)):0;
-            const {a,bg}=EC[k.entity]||{a:'#6366f1',bg:'#EEEEFF'};
-            const unit=KPI_UNITS[k.type]||'';
-            const pre=unit==='$';
-            const m=team.find(x=>x.id===k.assigneeId);
-            const over=pct>=100;
-            return (
-              <Card key={k.id} onClick={()=>setModal({edit:k})}
-                style={{padding:'18px 20px',cursor:'pointer',border:`1.5px solid ${over?a+'60':BORDER}`}}>
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-                  <div>
-                    <div style={{display:'inline-block',background:bg,color:a,fontSize:'9px',fontWeight:700,padding:'3px 8px',borderRadius:99,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6}}>{k.type}</div>
-                    {m&&<div style={{display:'flex',alignItems:'center',gap:5}}><Avatar name={m.name} color={m.color} size={18}/><span style={{fontSize:10,color:TXT2,fontWeight:500}}>{m.name}</span></div>}
+        <>
+          {/* Progress summary */}
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+            <div style={{flex:1,height:6,borderRadius:3,background:'#EEF1F9',overflow:'hidden'}}>
+              <div style={{
+                width:`${ek.length>0?(doneCount/ek.length)*100:0}%`,
+                height:'100%',background:(EC[entity]||{a:'#6366f1'}).a,
+                borderRadius:3,transition:'width 0.3s'}}/>
+            </div>
+            <span style={{fontSize:12,color:TXT2,fontWeight:600,whiteSpace:'nowrap'}}>
+              {doneCount} of {ek.length} achieved
+            </span>
+          </div>
+
+          {/* KPI list */}
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {ek.map(k=>{
+              const {a}=EC[k.entity]||{a:'#6366f1'};
+              const m=team.find(x=>x.id===k.assigneeId);
+              return (
+                <Card key={k.id} style={{padding:'14px 18px',
+                  border:`1.5px solid ${k.done?'#BBF7D0':BORDER}`,
+                  background:k.done?'#F0FDF4':CARD}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+                    {/* Done toggle */}
+                    <div onClick={()=>toggleDone(k.id)}
+                      style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
+                        cursor:'pointer',marginTop:1,
+                        border:`2px solid ${k.done?'#10b981':BORDER}`,
+                        background:k.done?'#10b981':'transparent',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        transition:'all 0.15s'}}>
+                      {k.done&&<i className="ti ti-check" style={{fontSize:11,color:'white'}} aria-hidden/>}
+                    </div>
+
+                    {/* Content */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{margin:'0 0 4px',fontSize:14,fontWeight:600,
+                        color:k.done?'#047857':TXT,
+                        textDecoration:k.done?'line-through':'none',
+                        lineHeight:1.4}}>
+                        {k.title||k.type||'Untitled KPI'}
+                      </p>
+                      {k.notes&&(
+                        <p style={{margin:'0 0 6px',fontSize:12,color:TXT2,lineHeight:1.4}}>
+                          {k.notes}
+                        </p>
+                      )}
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        {m&&(
+                          <div style={{display:'flex',alignItems:'center',gap:5}}>
+                            <Avatar name={m.name} color={m.color} size={18}/>
+                            <span style={{fontSize:11,color:TXT2}}>{m.name}</span>
+                          </div>
+                        )}
+                        {k.done&&(
+                          <span style={{fontSize:11,color:'#10b981',fontWeight:600}}>
+                            ✓ Achieved
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edit button */}
+                    <button onClick={()=>setModal({edit:k})}
+                      style={{background:'#EEF1F9',border:'none',cursor:'pointer',
+                        color:TXT2,padding:'4px 10px',borderRadius:7,
+                        fontSize:11,fontWeight:600,fontFamily:F,flexShrink:0}}>
+                      Edit
+                    </button>
                   </div>
-                  <span style={{fontSize:26,fontWeight:700,color:TXT,lineHeight:1}}>{pre?unit:''}{Number(k.current||0).toLocaleString()}{!pre?unit:''}</span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:11,color:TXT2}}>
-                  <span style={{color:over?'#10b981':TXT2,fontWeight:over?700:400}}>{over?'✓ Target achieved':pct+'%'}</span>
-                  <span>of {pre?unit:''}{Number(k.target||0).toLocaleString()}{!pre?unit:''}</span>
-                </div>
-                <div style={{height:7,borderRadius:4,background:'#EEF1F9',overflow:'hidden'}}>
-                  <div style={{width:`${pct}%`,height:'100%',background:over?'#10b981':a,borderRadius:4}}/>
-                </div>
-                {k.notes&&<p style={{margin:'10px 0 0',fontSize:11,color:TXT2,lineHeight:1.4}}>{k.notes}</p>}
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
+
       {modal==='add'&&<KpiModal title="New KPI" entity={entity} onClose={()=>setModal(null)} onSave={addKpi} team={team}/>}
       {modal?.edit&&<KpiModal title="Edit KPI" kpi={modal.edit} entity={entity} onClose={()=>setModal(null)} onSave={d=>upKpi(modal.edit.id,d)} onDelete={()=>delKpi(modal.edit.id)} team={team}/>}
     </div>
-  );
-}
-
-function KpiModal({title,kpi,entity,onClose,onSave,onDelete,team}) {
-  const [f,setF]=useState({entity:kpi?.entity||entity,type:kpi?.type||KPI_TYPES[0],target:kpi?.target||'',current:kpi?.current||'',assigneeId:kpi?.assigneeId||'',notes:kpi?.notes||''});
-  const s=(k,v)=>setF(x=>({...x,[k]:v}));
-  return (
-    <Modal title={title} onClose={onClose}>
-      <Grid2>
-        <Lbl s="Entity"><Sel value={f.entity} onChange={e=>s('entity',e.target.value)}>{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}</Sel></Lbl>
-        <Lbl s="KPI type"><Sel value={f.type} onChange={e=>s('type',e.target.value)}>{KPI_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</Sel></Lbl>
-        <Lbl s={`Target ${KPI_UNITS[f.type]?`(${KPI_UNITS[f.type]})`:'(count)'}`}><Inp type="number" value={f.target} onChange={e=>s('target',e.target.value)} placeholder="0"/></Lbl>
-        <Lbl s="Current value"><Inp type="number" value={f.current} onChange={e=>s('current',e.target.value)} placeholder="0"/></Lbl>
-      </Grid2>
-      <Lbl s="Assigned to"><Sel value={f.assigneeId} onChange={e=>s('assigneeId',e.target.value)}>
-        <option value="">Team KPI</option>{team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-      </Sel></Lbl>
-      <Lbl s="Notes"><Inp value={f.notes} onChange={e=>s('notes',e.target.value)} placeholder="Optional"/></Lbl>
-      <div style={{display:'flex',justifyContent:'space-between',marginTop:16,paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
-        {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
-        <div style={{display:'flex',gap:8}}><GhostBtn onClick={onClose}>Cancel</GhostBtn><PBtn onClick={()=>onSave(f)}>Save KPI</PBtn></div>
-      </div>
-    </Modal>
   );
 }
 
