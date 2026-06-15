@@ -6,11 +6,16 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "^5.0.0",
-    "@supabase/supabase-js": "^2.0.0"
+    "@supabase/supabase-js": "^2.0.0",
+    "recharts": "^2.12.7"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build"
+  },
+  "eslintConfig": {
+    "extends": ["react-app"],
+    "ignorePatterns": ["src/App.js"]
   },
   "browserslist": {
     "production": [">0.2%", "not dead", "not op_mini all"],
