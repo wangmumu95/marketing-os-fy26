@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { useState, useEffect } from "react";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','Others'];
 const EC = {
@@ -219,6 +220,7 @@ export default function App() {
   const [kpis,setKpis]   = useState([]);
   const [expenses,setExp]= useState({});
   const [leads,setLeads] = useState({});
+  const [budgets,setBudgets]=useState({});
   const [fy,setFy]       = useState(fyNow());
   const [ready,setReady] = useState(false);
   const [authed,setAuthed]= useState(()=>localStorage.getItem('mkt_auth')==='true');
@@ -230,11 +232,11 @@ export default function App() {
   useEffect(()=>{
     if(!authed){ setReady(false); return; }
     (async()=>{
-      const [t,tk,k,e,l]=await Promise.all([
+      const [t,tk,k,e,l,b]=await Promise.all([
         ld('mkt_team',DEFAULT_TEAM),ld('mkt_tasks',[]),
-        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),
+        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),ld('mkt_budgets',{}),
       ]);
-      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setReady(true);
+      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setBudgets(b);setReady(true);
     })();
   },[authed]);
 
@@ -252,6 +254,7 @@ export default function App() {
   const svKpis  = k=>{setKpis(k); sv('mkt_kpis',k);};
   const svExp   = e=>{setExp(e);  sv('mkt_exp',e);};
   const svLeads = l=>{setLeads(l);sv('mkt_leads',l);};
+  const svBudgets=b=>{setBudgets(b);sv('mkt_budgets',b);};
 
   const NAV=[
     {id:'dashboard',icon:'ti-layout-dashboard',label:'Dashboard'},
@@ -347,7 +350,7 @@ export default function App() {
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
         {page==='calendar'&& <CalendarPage team={team} tasks={tasks}/>}
         {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
-        {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} fy={fy}/>}
+        {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
         {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
       </div>
     </div>
@@ -846,7 +849,680 @@ function KpiModal({title,kpi,entity,onClose,onSave,onDelete,team}) {
 }
 
 /* ── Finance ────────────────────────────────────────────────────────────────── */
-function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
+function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
+  const [tab,setTab]          =useState('expenses');
+  const [expEdit,setExpEdit]  =useState(null);
+  const [leadEdit,setLead]    =useState(null);
+  const [budgetEdit,setBudEdit]=useState(null); // monthKey being budget-edited
+  const [expF,setExpF]        =useState({});
+  const [leadF,setLeadF]      =useState({});
+  const [budgetF,setBudgetF]  =useState({});
+
+  const fyMths=FY_MONTHS.map((m,i)=>({label:m,key:fyMKey(fy,i),year:i>=9?fy+1:fy}));
+
+  // Totals
+  const fyTotExp    =fyMths.reduce((s,{key})=>s+EXP_CATS.reduce((ss,c)=>ss+(+((expenses[key]||{})[c])||0),0),0);
+  const fyTotLeads  =fyMths.reduce((s,{key})=>s+LEAD_SRCS.reduce((ss,r)=>ss+(+((leads[key]||{})[r])||0),0),0);
+  const fyLeadGenExp=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})['Lead Generation'])||0),0);
+  const monthsWithLeads=fyMths.filter(({key})=>LEAD_SRCS.reduce((s,r)=>s+(+((leads[key]||{})[r])||0),0)>0).length;
+
+  // Per-month budget helpers (budgets now keyed by monthKey like expenses)
+  const monthBudgetTotal=key=>EXP_CATS.reduce((s,c)=>s+(+((budgets[key]||{})[c])||0),0);
+  const fyTotBudget=fyMths.reduce((s,{key})=>s+monthBudgetTotal(key),0);
+  const fyBudgetByCat=c=>fyMths.reduce((s,{key})=>s+(+((budgets[key]||{})[c])||0),0);
+
+  const variance=(actual,budget)=>budget>0?Math.round(((actual-budget)/budget)*100):null;
+
+  // Chart: monthly actual vs budget
+  let cumA=0,cumB=0;
+  const chartData=fyMths.map(({label,key})=>{
+    const actual=EXP_CATS.reduce((s,c)=>s+(+((expenses[key]||{})[c])||0),0);
+    const budget=monthBudgetTotal(key);
+    cumA+=actual; cumB+=budget;
+    return {'month':label,'Monthly Actual':actual,'Monthly Budget':budget,
+      'Cumulative Actual':Math.round(cumA),'Cumulative Budget':Math.round(cumB)};
+  });
+  const hasAnyBudget=fyTotBudget>0;
+
+  const CAT_COLORS=['#6366f1','#0891b2','#10b981','#f59e0b'];
+
+  return (
+    <div>
+      <PageHeader title={`Finance — ${fyLabel(fy)}`}/>
+      <div style={{display:'flex',gap:6,marginBottom:20}}>
+        {[['expenses','Expenses'],['leads','Leads & CPL']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 20px',fontSize:13,fontWeight:tab===id?700:500,
+            border:`1.5px solid ${tab===id?'#6366f1':BORDER}`,borderRadius:99,
+            background:tab===id?'#6366f1':CARD,cursor:'pointer',color:tab===id?'white':TXT2,
+            fontFamily:F,boxShadow:tab===id?'0 2px 8px rgba(99,102,241,0.3)':'none'}}>{label}</button>
+        ))}
+      </div>
+
+      {tab==='expenses'&&(
+        <>
+          {/* Summary cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
+            {EXP_CATS.map((c,i)=>{
+              const actual=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})[c])||0),0);
+              const budget=fyBudgetByCat(c);
+              const vPct=variance(actual,budget);
+              return (
+                <Card key={c} style={{padding:'16px'}}>
+                  <div style={{width:32,height:32,borderRadius:8,background:CAT_COLORS[i]+'20',
+                    display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
+                    <i className="ti ti-cash" style={{fontSize:15,color:CAT_COLORS[i]}} aria-hidden/>
+                  </div>
+                  <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,
+                    textTransform:'uppercase',letterSpacing:'0.04em'}}>{c}</div>
+                  <div style={{fontSize:20,fontWeight:700,color:TXT}}>{actual>0?`$${actual.toLocaleString()}`:'—'}</div>
+                  {budget>0&&(
+                    <div style={{marginTop:6}}>
+                      <div style={{fontSize:10,color:TXT2}}>Budget: ${budget.toLocaleString()}</div>
+                      {vPct!==null&&actual>0&&(
+                        <div style={{fontSize:11,fontWeight:700,marginTop:2,color:vPct>0?'#ef4444':'#10b981'}}>
+                          {vPct>0?`▲${vPct}% over`:`▼${Math.abs(vPct)}% under`} budget
+                        </div>
+                      )}
+                      <div style={{height:4,borderRadius:2,background:'#EEF1F9',overflow:'hidden',marginTop:6}}>
+                        <div style={{width:`${Math.min(100,budget>0?(actual/budget)*100:0)}%`,
+                          height:'100%',background:vPct>0?'#ef4444':CAT_COLORS[i],borderRadius:2}}/>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Chart */}
+          {hasAnyBudget&&(
+            <Card style={{padding:'18px 20px',marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:TXT,marginBottom:16}}>
+                Budget vs Actual — {fyLabel(fy)}
+              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9"/>
+                  <XAxis dataKey="month" tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}/>
+                  <YAxis tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}
+                    tickFormatter={v=>v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`}/>
+                  <Tooltip formatter={(v,n)=>[`$${Number(v).toLocaleString()}`,n]}
+                    contentStyle={{borderRadius:10,border:`1px solid ${BORDER}`,fontSize:12,fontFamily:F}}/>
+                  <Legend wrapperStyle={{fontSize:12,fontFamily:F,paddingTop:8}}/>
+                  <Bar dataKey="Monthly Budget" fill="#E5E9F5" radius={[4,4,0,0]}/>
+                  <Bar dataKey="Monthly Actual" fill="#6366f1" radius={[4,4,0,0]}/>
+                  <Line type="monotone" dataKey="Cumulative Budget" stroke="#94a3b8"
+                    strokeWidth={2} strokeDasharray="5 4" dot={false}/>
+                  <Line type="monotone" dataKey="Cumulative Actual" stroke="#f59e0b"
+                    strokeWidth={2} dot={{r:3,fill:'#f59e0b'}}/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Expenses table */}
+          <Card>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    <th style={TH}>Month</th>
+                    {EXP_CATS.map(c=><th key={c} style={TH}>{c}</th>)}
+                    <th style={TH}>Total</th>
+                    <th style={TH}>Actual</th>
+                    <th style={TH}>Budget</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fyMths.map(({label,key,year},ri)=>{
+                    const r=expenses[key]||{};
+                    const b=budgets[key]||{};
+                    const totActual=EXP_CATS.reduce((s,c)=>s+(+r[c]||0),0);
+                    const totBudget=EXP_CATS.reduce((s,c)=>s+(+b[c]||0),0);
+                    const totV=variance(totActual,totBudget);
+                    return (
+                      <tr key={key} style={{background:ri%2===0?CARD:'#FAFBFF',
+                        borderBottom:`1px solid ${TBORDER}`}}>
+                        <td style={{...TD,fontWeight:600}}>{label} {year}</td>
+                        {EXP_CATS.map(c=>{
+                          const actual=+r[c]||0;
+                          const budget=+b[c]||0;
+                          const vPct=variance(actual,budget);
+                          return (
+                            <td key={c} style={TD}>
+                              <div style={{fontWeight:500}}>{actual>0?`$${Number(actual).toLocaleString()}`:'—'}</div>
+                              {budget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${Number(budget).toLocaleString()}</div>}
+                              {vPct!==null&&actual>0&&(
+                                <div style={{fontSize:10,fontWeight:700,marginTop:1,
+                                  color:vPct>0?'#ef4444':'#10b981'}}>
+                                  {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td style={{...TD,fontWeight:700,color:'#6366f1'}}>
+                          <div>{totActual>0?`$${totActual.toLocaleString()}`:'—'}</div>
+                          {totBudget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${totBudget.toLocaleString()}</div>}
+                          {totV!==null&&totActual>0&&(
+                            <div style={{fontSize:10,fontWeight:700,marginTop:1,
+                              color:totV>0?'#ef4444':'#10b981'}}>
+                              {totV>0?`▲${totV}%`:`▼${Math.abs(totV)}%`}
+                            </div>
+                          )}
+                        </td>
+                        <td style={TD}>
+                          <button onClick={()=>{setExpF(r);setExpEdit(key);}}
+                            style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                              padding:'4px 10px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F,marginBottom:4,display:'block'}}>
+                            Edit actual
+                          </button>
+                          <button onClick={()=>{setBudgetF(b);setBudEdit(key);}}
+                            style={{background:'#E0F7EF',color:'#047857',border:'none',cursor:'pointer',
+                              padding:'4px 10px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F,display:'block'}}>
+                            Edit budget
+                          </button>
+                        </td>
+                        <td style={TD}>{totBudget>0?`$${totBudget.toLocaleString()}`:'—'}</td>
+                      </tr>
+                    );
+                  })}
+                  {/* FY totals row */}
+                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                    <td style={{...TD,fontWeight:700}}>FY Total</td>
+                    {EXP_CATS.map(c=>{
+                      const actual=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})[c])||0),0);
+                      const budget=fyBudgetByCat(c);
+                      const vPct=variance(actual,budget);
+                      return (
+                        <td key={c} style={TD}>
+                          <div style={{fontWeight:700}}>{actual>0?`$${actual.toLocaleString()}`:'—'}</div>
+                          {budget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${budget.toLocaleString()}</div>}
+                          {vPct!==null&&actual>0&&(
+                            <div style={{fontSize:10,fontWeight:700,marginTop:1,color:vPct>0?'#ef4444':'#10b981'}}>
+                              {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>
+                      <div>{fyTotExp>0?`$${fyTotExp.toLocaleString()}`:'—'}</div>
+                      {fyTotBudget>0&&<div style={{fontSize:11,color:TXT2,marginTop:1}}>Budget: ${fyTotBudget.toLocaleString()}</div>}
+                      {fyTotBudget>0&&fyTotExp>0&&(()=>{
+                        const vPct=variance(fyTotExp,fyTotBudget);
+                        return vPct!==null?<div style={{fontSize:11,fontWeight:700,marginTop:1,
+                          color:vPct>0?'#ef4444':'#10b981'}}>
+                          {vPct>0?`▲${vPct}% over`:`▼${Math.abs(vPct)}% under`}
+                        </div>:null;
+                      })()}
+                    </td>
+                    <td style={TD}/>
+                    <td style={{...TD,fontWeight:700}}>{fyTotBudget>0?`$${fyTotBudget.toLocaleString()}`:'—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {tab==='leads'&&(
+        <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+            {[{l:'FY leads',v:fyTotLeads||'—',i:'ti-users',c:'#6366f1',bg:'#EEEEFF'},
+              {l:'Lead gen spend',v:fyLeadGenExp?`$${fyLeadGenExp.toLocaleString()}`:'—',i:'ti-cash',c:'#0891b2',bg:'#E0F5FB'},
+              {l:'FY cost/lead',v:fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#10b981',bg:'#E0F7EF'},
+              {l:'Avg leads/month',v:fyTotLeads>0&&monthsWithLeads>0?Math.round(fyTotLeads/monthsWithLeads):'—',i:'ti-chart-line',c:'#f59e0b',bg:'#FEF4DC'},
+            ].map(({l,v,i,c,bg})=>(
+              <Card key={l} style={{padding:'16px'}}>
+                <div style={{width:32,height:32,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
+                  <i className={`ti ${i}`} style={{fontSize:15,color:c}} aria-hidden/>
+                </div>
+                <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}}>{l}</div>
+                <div style={{fontSize:20,fontWeight:700,color:TXT}}>{v}</div>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                  <th style={TH}>Month</th>
+                  {LEAD_SRCS.map(s=><th key={s} style={TH}>{s}</th>)}
+                  <th style={TH}>Total leads</th>
+                  <th style={TH}>Lead Gen Spend</th>
+                  <th style={{...TH,color:'#6366f1'}}>CPL</th>
+                  <th style={TH}/>
+                </tr></thead>
+                <tbody>
+                  {fyMths.map(({label,key,year},ri)=>{
+                    const lr=leads[key]||{};const er=expenses[key]||{};
+                    const totL=LEAD_SRCS.reduce((s,r)=>s+(+lr[r]||0),0);
+                    const leadGenSpend=+(er['Lead Generation']||0);
+                    const cpl=totL>0&&leadGenSpend>0?(leadGenSpend/totL).toFixed(2):null;
+                    return (
+                      <tr key={key} style={{background:ri%2===0?CARD:'#FAFBFF',borderBottom:`1px solid ${TBORDER}`}}>
+                        <td style={{...TD,fontWeight:600}}>{label} {year}</td>
+                        {LEAD_SRCS.map(r=><td key={r} style={TD}>{lr[r]?Number(lr[r]).toLocaleString():'—'}</td>)}
+                        <td style={{...TD,fontWeight:700}}>{totL>0?totL.toLocaleString():'—'}</td>
+                        <td style={TD}>{leadGenSpend>0?`$${leadGenSpend.toLocaleString()}`:'—'}</td>
+                        <td style={{...TD,fontWeight:700,color:cpl?'#6366f1':TXT2}}>{cpl?`$${cpl}`:'—'}</td>
+                        <td style={TD}><button onClick={()=>{setLeadF(lr);setLead(key);}}
+                          style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                            padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button></td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                    <td style={{...TD,fontWeight:700}}>FY Total</td>
+                    {LEAD_SRCS.map(r=>{const tot=fyMths.reduce((s,{key})=>s+(+((leads[key]||{})[r])||0),0);return<td key={r} style={{...TD,fontWeight:700}}>{tot>0?tot.toLocaleString():'—'}</td>;})}
+                    <td style={{...TD,fontWeight:700}}>{fyTotLeads>0?fyTotLeads.toLocaleString():'—'}</td>
+                    <td style={{...TD,fontWeight:700}}>{fyLeadGenExp>0?`$${fyLeadGenExp.toLocaleString()}`:'—'}</td>
+                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>{fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—'}</td>
+                    <td style={TD}/>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* Edit actual modal */}
+      {expEdit&&(
+        <Modal title={`Actual spend — ${fyMths.find(m=>m.key===expEdit)?.label} ${expEdit?.slice(0,4)}`} onClose={()=>setExpEdit(null)}>
+          <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter monthly actual spend per category</p>
+          {EXP_CATS.map(c=><Lbl key={c} s={c}><Inp type="number" value={expF[c]||''} onChange={e=>setExpF(f=>({...f,[c]:e.target.value}))} placeholder="0"/></Lbl>)}
+          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:12,color:TXT2}}>Total: </span>
+            <span style={{fontSize:15,fontWeight:700,color:TXT}}>${EXP_CATS.reduce((s,c)=>s+(+expF[c]||0),0).toLocaleString()}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <GhostBtn onClick={()=>setExpEdit(null)}>Cancel</GhostBtn>
+            <PBtn onClick={()=>{saveExp({...expenses,[expEdit]:expF});setExpEdit(null);}}>Save</PBtn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit budget modal */}
+      {budgetEdit&&(
+        <Modal title={`Budget — ${fyMths.find(m=>m.key===budgetEdit)?.label} ${budgetEdit?.slice(0,4)}`} onClose={()=>setBudEdit(null)}>
+          <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter the budgeted amount per category for this month</p>
+          {EXP_CATS.map(c=><Lbl key={c} s={c}><Inp type="number" value={budgetF[c]||''} onChange={e=>setBudgetF(f=>({...f,[c]:e.target.value}))} placeholder="0"/></Lbl>)}
+          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:12,color:TXT2}}>Total budget: </span>
+            <span style={{fontSize:15,fontWeight:700,color:TXT}}>${EXP_CATS.reduce((s,c)=>s+(+budgetF[c]||0),0).toLocaleString()}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <GhostBtn onClick={()=>setBudEdit(null)}>Cancel</GhostBtn>
+            <PBtn onClick={()=>{saveBudgets({...budgets,[budgetEdit]:budgetF});setBudEdit(null);}}>Save budget</PBtn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit leads modal */}
+      {leadEdit&&(
+        <Modal title={`Leads — ${fyMths.find(m=>m.key===leadEdit)?.label} ${leadEdit?.slice(0,4)}`} onClose={()=>setLead(null)}>
+          <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter lead counts by source type</p>
+          {LEAD_SRCS.map(r=><Lbl key={r} s={`${r} leads`}><Inp type="number" value={leadF[r]||''} onChange={e=>setLeadF(f=>({...f,[r]:e.target.value}))} placeholder="0"/></Lbl>)}
+          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:12,color:TXT2}}>Total leads: </span>
+            <span style={{fontSize:15,fontWeight:700,color:TXT}}>{LEAD_SRCS.reduce((s,r)=>s+(+leadF[r]||0),0).toLocaleString()}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <GhostBtn onClick={()=>setLead(null)}>Cancel</GhostBtn>
+            <PBtn onClick={()=>{saveLeads({...leads,[leadEdit]:leadF});setLead(null);}}>Save</PBtn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+  const [tab,setTab]=useState('expenses');
+  const [expEdit,setExpEdit]=useState(null);
+  const [leadEdit,setLead]=useState(null);
+  const [expF,setExpF]=useState({});
+  const [leadF,setLeadF]=useState({});
+  const [budgetEdit,setBudgetEdit]=useState(false);
+  const [budgetF,setBudgetF]=useState({});
+
+  const fyMths=FY_MONTHS.map((m,i)=>({label:m,key:fyMKey(fy,i),year:i>=9?fy+1:fy}));
+  const fyTotExp=fyMths.reduce((s,{key})=>s+EXP_CATS.reduce((ss,c)=>ss+(+((expenses[key]||{})[c])||0),0),0);
+  const fyTotLeads=fyMths.reduce((s,{key})=>s+LEAD_SRCS.reduce((ss,r)=>ss+(+((leads[key]||{})[r])||0),0),0);
+  const fyLeadGenExp=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})['Lead Generation'])||0),0);
+  const monthsWithLeads=fyMths.filter(({key})=>LEAD_SRCS.reduce((s,r)=>s+(+((leads[key]||{})[r])||0),0)>0).length;
+
+  // Total FY budget across all categories
+  const fyTotBudget=EXP_CATS.reduce((s,c)=>s+(+budgets[c]||0),0);
+  // Monthly budget per category
+  const monthBudget=c=>fyTotBudget>0?(+budgets[c]||0)/12:0;
+
+  // Variance helper: positive = overspent, negative = underspent
+  const variance=(actual,budget)=>budget>0?Math.round(((actual-budget)/budget)*100):null;
+
+  // Chart data: cumulative budget vs actual by month
+  let cumActual=0, cumBudget=0;
+  const chartData=fyMths.map(({label,key})=>{
+    const actual=EXP_CATS.reduce((s,c)=>s+(+((expenses[key]||{})[c])||0),0);
+    const budget=fyTotBudget/12;
+    cumActual+=actual;
+    cumBudget+=budget;
+    return {
+      month:label,
+      'Monthly Actual':actual,
+      'Monthly Budget':Math.round(budget),
+      'Cumulative Actual':Math.round(cumActual),
+      'Cumulative Budget':Math.round(cumBudget),
+    };
+  });
+
+  const CAT_COLORS=['#6366f1','#0891b2','#10b981','#f59e0b'];
+
+  return (
+    <div>
+      <PageHeader title={`Finance — ${fyLabel(fy)}`}/>
+      <div style={{display:'flex',gap:6,marginBottom:20}}>
+        {[['expenses','Expenses'],['leads','Leads & CPL']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 20px',fontSize:13,fontWeight:tab===id?700:500,
+            border:`1.5px solid ${tab===id?'#6366f1':BORDER}`,borderRadius:99,
+            background:tab===id?'#6366f1':CARD,cursor:'pointer',color:tab===id?'white':TXT2,
+            fontFamily:F,boxShadow:tab===id?'0 2px 8px rgba(99,102,241,0.3)':'none'}}>{label}</button>
+        ))}
+      </div>
+
+      {tab==='expenses'&&(
+        <>
+          {/* Summary cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+            {EXP_CATS.map((c,i)=>{
+              const tot=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})[c])||0),0);
+              const bud=+budgets[c]||0;
+              const vPct=bud>0?Math.round(((tot-bud)/bud)*100):null;
+              return (
+                <Card key={c} style={{padding:'16px'}}>
+                  <div style={{width:32,height:32,borderRadius:8,background:CAT_COLORS[i]+'20',
+                    display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
+                    <i className="ti ti-cash" style={{fontSize:15,color:CAT_COLORS[i]}} aria-hidden/>
+                  </div>
+                  <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,
+                    textTransform:'uppercase',letterSpacing:'0.04em'}}>{c}</div>
+                  <div style={{fontSize:20,fontWeight:700,color:TXT}}>{tot>0?`$${tot.toLocaleString()}`:'—'}</div>
+                  {bud>0&&(
+                    <div style={{marginTop:6}}>
+                      <div style={{fontSize:10,color:TXT2}}>Budget: ${bud.toLocaleString()}</div>
+                      {vPct!==null&&(
+                        <div style={{fontSize:11,fontWeight:700,color:vPct>0?'#ef4444':'#10b981',marginTop:2}}>
+                          {vPct>0?`▲ ${vPct}% over`:`▼ ${Math.abs(vPct)}% under`} budget
+                        </div>
+                      )}
+                      {/* Budget progress bar */}
+                      <div style={{height:4,borderRadius:2,background:'#EEF1F9',overflow:'hidden',marginTop:6}}>
+                        <div style={{width:`${Math.min(100,(tot/bud)*100)}%`,height:'100%',
+                          background:vPct>0?'#ef4444':CAT_COLORS[i],borderRadius:2}}/>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* FY Budget setter */}
+          <Card style={{padding:'16px 20px',marginBottom:16}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:budgetEdit?14:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:13,fontWeight:700,color:TXT}}>FY Budget</span>
+                {fyTotBudget>0&&!budgetEdit&&(
+                  <span style={{fontSize:12,color:TXT2}}>Total: ${fyTotBudget.toLocaleString()}</span>
+                )}
+              </div>
+              <button onClick={()=>{setBudgetF({...budgets});setBudgetEdit(!budgetEdit);}}
+                style={{background:'#EEEEFF',border:'none',cursor:'pointer',color:'#6366f1',
+                  padding:'6px 14px',borderRadius:9,fontSize:12,fontWeight:600,fontFamily:F}}>
+                {budgetEdit?'Cancel':'Set budget'}
+              </button>
+            </div>
+            {budgetEdit&&(
+              <>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:12}}>
+                  {EXP_CATS.map(c=>(
+                    <Lbl key={c} s={c}>
+                      <Inp type="number" value={budgetF[c]||''} placeholder="0"
+                        onChange={e=>setBudgetF(f=>({...f,[c]:e.target.value}))}/>
+                    </Lbl>
+                  ))}
+                </div>
+                <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+                  <GhostBtn onClick={()=>setBudgetEdit(false)}>Cancel</GhostBtn>
+                  <PBtn onClick={()=>{saveBudgets(budgetF);setBudgetEdit(false);}}>Save budget</PBtn>
+                </div>
+              </>
+            )}
+          </Card>
+
+          {/* Chart: Monthly Actual vs Budget + Cumulative */}
+          {fyTotBudget>0&&(
+            <Card style={{padding:'18px 20px',marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:TXT,marginBottom:16}}>
+                Budget vs Actual — {fyLabel(fy)}
+              </div>
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9"/>
+                  <XAxis dataKey="month" tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}/>
+                  <YAxis tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}
+                    tickFormatter={v=>v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`}/>
+                  <Tooltip formatter={(v,n)=>[`$${Number(v).toLocaleString()}`,n]}
+                    contentStyle={{borderRadius:10,border:`1px solid ${BORDER}`,fontSize:12,fontFamily:F}}/>
+                  <Legend wrapperStyle={{fontSize:12,fontFamily:F,paddingTop:8}}/>
+                  <Bar dataKey="Monthly Budget" fill="#E5E9F5" radius={[4,4,0,0]}/>
+                  <Bar dataKey="Monthly Actual" fill="#6366f1" radius={[4,4,0,0]}/>
+                  <Line type="monotone" dataKey="Cumulative Budget" stroke="#94a3b8"
+                    strokeWidth={2} strokeDasharray="5 4" dot={false}/>
+                  <Line type="monotone" dataKey="Cumulative Actual" stroke="#f59e0b"
+                    strokeWidth={2} dot={{r:3,fill:'#f59e0b'}}/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Expenses table */}
+          <Card>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                    <th style={TH}>Month</th>
+                    {EXP_CATS.map(c=><th key={c} style={TH}>{c}</th>)}
+                    <th style={TH}>Total</th><th style={TH}/>
+                  </tr>
+                  {fyTotBudget>0&&(
+                    <tr style={{background:'#F7F8FD',borderBottom:`1px solid ${TBORDER}`}}>
+                      <td style={{...TD,fontSize:11,fontWeight:700,color:TXT2,textTransform:'uppercase',letterSpacing:'0.04em'}}>Monthly budget</td>
+                      {EXP_CATS.map(c=>{
+                        const mb=monthBudget(c);
+                        return <td key={c} style={{...TD,fontSize:12,color:TXT2,fontWeight:500}}>{mb>0?`$${Math.round(mb).toLocaleString()}`:'—'}</td>;
+                      })}
+                      <td style={{...TD,fontSize:12,color:TXT2,fontWeight:500}}>{fyTotBudget>0?`$${Math.round(fyTotBudget/12).toLocaleString()}`:'—'}</td>
+                      <td style={TD}/>
+                    </tr>
+                  )}
+                </thead>
+                <tbody>
+                  {fyMths.map(({label,key,year},ri)=>{
+                    const r=expenses[key]||{};
+                    const tot=EXP_CATS.reduce((s,c)=>s+(+r[c]||0),0);
+                    return (
+                      <tr key={key} style={{background:ri%2===0?CARD:'#FAFBFF',borderBottom:`1px solid ${TBORDER}`}}>
+                        <td style={{...TD,fontWeight:600}}>{label} {year}</td>
+                        {EXP_CATS.map(c=>{
+                          const actual=+r[c]||0;
+                          const mb=monthBudget(c);
+                          const vPct=mb>0?variance(actual,mb):null;
+                          return (
+                            <td key={c} style={TD}>
+                              <div style={{fontWeight:500}}>{actual>0?`$${Number(actual).toLocaleString()}`:'—'}</div>
+                              {vPct!==null&&actual>0&&(
+                                <div style={{fontSize:10,fontWeight:600,marginTop:2,
+                                  color:vPct>0?'#ef4444':'#10b981'}}>
+                                  {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td style={{...TD,fontWeight:700,color:'#6366f1'}}>
+                          <div>{tot>0?`$${tot.toLocaleString()}`:'—'}</div>
+                          {fyTotBudget>0&&tot>0&&(()=>{
+                            const mb=fyTotBudget/12;
+                            const vPct=variance(tot,mb);
+                            return vPct!==null?(
+                              <div style={{fontSize:10,fontWeight:600,marginTop:2,
+                                color:vPct>0?'#ef4444':'#10b981'}}>
+                                {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
+                              </div>
+                            ):null;
+                          })()}
+                        </td>
+                        <td style={TD}>
+                          <button onClick={()=>{setExpF(r);setExpEdit(key);}}
+                            style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                              padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                    <td style={{...TD,fontWeight:700}}>FY Total</td>
+                    {EXP_CATS.map(c=>{
+                      const tot=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})[c])||0),0);
+                      const bud=+budgets[c]||0;
+                      const vPct=bud>0?variance(tot,bud):null;
+                      return (
+                        <td key={c} style={TD}>
+                          <div style={{fontWeight:700}}>{tot>0?`$${tot.toLocaleString()}`:'—'}</div>
+                          {vPct!==null&&tot>0&&(
+                            <div style={{fontSize:10,fontWeight:700,marginTop:2,
+                              color:vPct>0?'#ef4444':'#10b981'}}>
+                              {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>
+                      <div>{fyTotExp>0?`$${fyTotExp.toLocaleString()}`:'—'}</div>
+                      {fyTotBudget>0&&fyTotExp>0&&(()=>{
+                        const vPct=variance(fyTotExp,fyTotBudget);
+                        return vPct!==null?(
+                          <div style={{fontSize:11,fontWeight:700,marginTop:2,
+                            color:vPct>0?'#ef4444':'#10b981'}}>
+                            {vPct>0?`▲${vPct}% over budget`:`▼${Math.abs(vPct)}% under budget`}
+                          </div>
+                        ):null;
+                      })()}
+                    </td>
+                    <td style={TD}/>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {tab==='leads'&&(
+        <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+            {[{l:'FY leads',v:fyTotLeads||'—',i:'ti-users',c:'#6366f1',bg:'#EEEEFF'},
+              {l:'Lead gen spend',v:fyLeadGenExp?`$${fyLeadGenExp.toLocaleString()}`:'—',i:'ti-cash',c:'#0891b2',bg:'#E0F5FB'},
+              {l:'FY cost/lead',v:fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#10b981',bg:'#E0F7EF'},
+              {l:'Avg leads/month',v:fyTotLeads>0&&monthsWithLeads>0?Math.round(fyTotLeads/monthsWithLeads):'—',i:'ti-chart-line',c:'#f59e0b',bg:'#FEF4DC'},
+            ].map(({l,v,i,c,bg})=>(
+              <Card key={l} style={{padding:'16px'}}>
+                <div style={{width:32,height:32,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
+                  <i className={`ti ${i}`} style={{fontSize:15,color:c}} aria-hidden/>
+                </div>
+                <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}}>{l}</div>
+                <div style={{fontSize:20,fontWeight:700,color:TXT}}>{v}</div>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
+                  <th style={TH}>Month</th>
+                  {LEAD_SRCS.map(s=><th key={s} style={TH}>{s}</th>)}
+                  <th style={TH}>Total leads</th><th style={TH}>Lead Gen Spend</th>
+                  <th style={{...TH,color:'#6366f1'}}>CPL</th><th style={TH}/>
+                </tr></thead>
+                <tbody>
+                  {fyMths.map(({label,key,year},ri)=>{
+                    const lr=leads[key]||{};const er=expenses[key]||{};
+                    const totL=LEAD_SRCS.reduce((s,r)=>s+(+lr[r]||0),0);
+                    const leadGenSpend=+(er['Lead Generation']||0);
+                    const cpl=totL>0&&leadGenSpend>0?(leadGenSpend/totL).toFixed(2):null;
+                    return (
+                      <tr key={key} style={{background:ri%2===0?CARD:'#FAFBFF',borderBottom:`1px solid ${TBORDER}`}}>
+                        <td style={{...TD,fontWeight:600}}>{label} {year}</td>
+                        {LEAD_SRCS.map(r=><td key={r} style={TD}>{lr[r]?Number(lr[r]).toLocaleString():'—'}</td>)}
+                        <td style={{...TD,fontWeight:700}}>{totL>0?totL.toLocaleString():'—'}</td>
+                        <td style={TD}>{leadGenSpend>0?`$${leadGenSpend.toLocaleString()}`:'—'}</td>
+                        <td style={{...TD,fontWeight:700,color:cpl?'#6366f1':TXT2}}>{cpl?`$${cpl}`:'—'}</td>
+                        <td style={TD}><button onClick={()=>{setLeadF(lr);setLead(key);}}
+                          style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                            padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button></td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                    <td style={{...TD,fontWeight:700}}>FY Total</td>
+                    {LEAD_SRCS.map(r=>{const tot=fyMths.reduce((s,{key})=>s+(+((leads[key]||{})[r])||0),0);return<td key={r} style={{...TD,fontWeight:700}}>{tot>0?tot.toLocaleString():'—'}</td>;})}
+                    <td style={{...TD,fontWeight:700}}>{fyTotLeads>0?fyTotLeads.toLocaleString():'—'}</td>
+                    <td style={{...TD,fontWeight:700}}>{fyLeadGenExp>0?`$${fyLeadGenExp.toLocaleString()}`:'—'}</td>
+                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>{fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—'}</td>
+                    <td style={TD}/>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {expEdit&&(
+        <Modal title={`Expenses — ${fyMths.find(m=>m.key===expEdit)?.label} ${expEdit?.slice(0,4)}`} onClose={()=>setExpEdit(null)}>
+          <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter monthly spend per category</p>
+          {EXP_CATS.map(c=><Lbl key={c} s={c}><Inp type="number" value={expF[c]||''} onChange={e=>setExpF(f=>({...f,[c]:e.target.value}))} placeholder="0"/></Lbl>)}
+          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:12,color:TXT2}}>Total: </span>
+            <span style={{fontSize:15,fontWeight:700,color:TXT}}>${EXP_CATS.reduce((s,c)=>s+(+expF[c]||0),0).toLocaleString()}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <GhostBtn onClick={()=>setExpEdit(null)}>Cancel</GhostBtn>
+            <PBtn onClick={()=>{saveExp({...expenses,[expEdit]:expF});setExpEdit(null);}}>Save</PBtn>
+          </div>
+        </Modal>
+      )}
+      {leadEdit&&(
+        <Modal title={`Leads — ${fyMths.find(m=>m.key===leadEdit)?.label} ${leadEdit?.slice(0,4)}`} onClose={()=>setLead(null)}>
+          <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter lead counts by source type</p>
+          {LEAD_SRCS.map(r=><Lbl key={r} s={`${r} leads`}><Inp type="number" value={leadF[r]||''} onChange={e=>setLeadF(f=>({...f,[r]:e.target.value}))} placeholder="0"/></Lbl>)}
+          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:12,color:TXT2}}>Total leads: </span>
+            <span style={{fontSize:15,fontWeight:700,color:TXT}}>{LEAD_SRCS.reduce((s,r)=>s+(+leadF[r]||0),0).toLocaleString()}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <GhostBtn onClick={()=>setLead(null)}>Cancel</GhostBtn>
+            <PBtn onClick={()=>{saveLeads({...leads,[leadEdit]:leadF});setLead(null);}}>Save</PBtn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
   const [tab,setTab]=useState('expenses');
   const [expEdit,setExpEdit]=useState(null);
   const [leadEdit,setLead]=useState(null);
