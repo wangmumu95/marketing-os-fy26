@@ -855,6 +855,10 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
   const fyMths=FY_MONTHS.map((m,i)=>({label:m,key:fyMKey(fy,i),year:i>=9?fy+1:fy}));
   const fyTotExp=fyMths.reduce((s,{key})=>s+EXP_CATS.reduce((ss,c)=>ss+(+((expenses[key]||{})[c])||0),0),0);
   const fyTotLeads=fyMths.reduce((s,{key})=>s+LEAD_SRCS.reduce((ss,r)=>ss+(+((leads[key]||{})[r])||0),0),0);
+  // CPL uses only Lead Generation spend
+  const fyLeadGenExp=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})['Lead Generation'])||0),0);
+  // Average only counts months where leads were actually entered
+  const monthsWithLeads=fyMths.filter(({key})=>LEAD_SRCS.reduce((s,r)=>s+(+((leads[key]||{})[r])||0),0)>0).length;
   return (
     <div>
       <PageHeader title={`Finance — ${fyLabel(fy)}`}/>
@@ -919,9 +923,9 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
         <>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
             {[{l:'FY leads',v:fyTotLeads||'—',i:'ti-users',c:'#6366f1',bg:'#EEEEFF'},
-              {l:'FY spend',v:fyTotExp?`$${fyTotExp.toLocaleString()}`:'—',i:'ti-cash',c:'#0891b2',bg:'#E0F5FB'},
-              {l:'FY cost/lead',v:fyTotLeads>0&&fyTotExp>0?`$${(fyTotExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#10b981',bg:'#E0F7EF'},
-              {l:'Avg/month',v:fyTotLeads>0?Math.round(fyTotLeads/12):'—',i:'ti-chart-line',c:'#f59e0b',bg:'#FEF4DC'},
+              {l:'Lead gen spend',v:fyLeadGenExp?`$${fyLeadGenExp.toLocaleString()}`:'—',i:'ti-cash',c:'#0891b2',bg:'#E0F5FB'},
+              {l:'FY cost/lead',v:fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#10b981',bg:'#E0F7EF'},
+              {l:'Avg leads/month',v:fyTotLeads>0&&monthsWithLeads>0?Math.round(fyTotLeads/monthsWithLeads):'—',i:'ti-chart-line',c:'#f59e0b',bg:'#FEF4DC'},
             ].map(({l,v,i,c,bg})=>(
               <Card key={l} style={{padding:'16px'}}>
                 <div style={{width:32,height:32,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
@@ -936,20 +940,20 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr style={{borderBottom:`2px solid ${TBORDER}`}}>
-                  <th style={TH}>Month</th>{LEAD_SRCS.map(s=><th key={s} style={TH}>{s}</th>)}<th style={TH}>Total</th><th style={TH}>Spend</th><th style={{...TH,color:'#6366f1'}}>CPL</th><th style={TH}/>
+                  <th style={TH}>Month</th>{LEAD_SRCS.map(s=><th key={s} style={TH}>{s}</th>)}<th style={TH}>Total leads</th><th style={TH}>Lead Gen Spend</th><th style={{...TH,color:'#6366f1'}}>CPL</th><th style={TH}/>
                 </tr></thead>
                 <tbody>
                   {fyMths.map(({label,key,year},ri)=>{
                     const lr=leads[key]||{};const er=expenses[key]||{};
                     const totL=LEAD_SRCS.reduce((s,r)=>s+(+lr[r]||0),0);
-                    const totE=EXP_CATS.reduce((s,c)=>s+(+er[c]||0),0);
-                    const cpl=totL>0&&totE>0?(totE/totL).toFixed(2):null;
+                    const leadGenSpend=+(er['Lead Generation']||0);
+                    const cpl=totL>0&&leadGenSpend>0?(leadGenSpend/totL).toFixed(2):null;
                     return (
                       <tr key={key} style={{background:ri%2===0?CARD:'#FAFBFF',borderBottom:`1px solid ${TBORDER}`}}>
                         <td style={{...TD,fontWeight:600}}>{label} {year}</td>
                         {LEAD_SRCS.map(r=><td key={r} style={TD}>{lr[r]?Number(lr[r]).toLocaleString():'—'}</td>)}
                         <td style={{...TD,fontWeight:700}}>{totL>0?totL.toLocaleString():'—'}</td>
-                        <td style={TD}>{totE>0?`$${totE.toLocaleString()}`:'—'}</td>
+                        <td style={TD}>{leadGenSpend>0?`$${leadGenSpend.toLocaleString()}`:'—'}</td>
                         <td style={{...TD,fontWeight:700,color:cpl?'#6366f1':TXT2}}>{cpl?`$${cpl}`:'—'}</td>
                         <td style={TD}><button onClick={()=>{setLeadF(lr);setLead(key);}} style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button></td>
                       </tr>
@@ -959,8 +963,8 @@ function FinPage({expenses,saveExp,leads,saveLeads,fy}) {
                     <td style={{...TD,fontWeight:700}}>FY Total</td>
                     {LEAD_SRCS.map(r=>{const tot=fyMths.reduce((s,{key})=>s+(+((leads[key]||{})[r])||0),0);return<td key={r} style={{...TD,fontWeight:700}}>{tot>0?tot.toLocaleString():'—'}</td>;})}
                     <td style={{...TD,fontWeight:700}}>{fyTotLeads>0?fyTotLeads.toLocaleString():'—'}</td>
-                    <td style={{...TD,fontWeight:700}}>{fyTotExp>0?`$${fyTotExp.toLocaleString()}`:'—'}</td>
-                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>{fyTotLeads>0&&fyTotExp>0?`$${(fyTotExp/fyTotLeads).toFixed(2)}`:'—'}</td>
+                    <td style={{...TD,fontWeight:700}}>{fyLeadGenExp>0?`$${fyLeadGenExp.toLocaleString()}`:'—'}</td>
+                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>{fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—'}</td>
                     <td style={TD}/>
                   </tr>
                 </tbody>
