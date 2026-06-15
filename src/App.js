@@ -360,82 +360,73 @@ export default function App() {
 /* ── Dashboard ──────────────────────────────────────────────────────────────── */
 function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
   const now=new Date();
-  const curKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthExp   =Object.values(expenses[curKey]||{}).reduce((s,v)=>s+(+v||0),0);
-  const monthLeads =Object.values(leads[curKey]||{}).reduce((s,v)=>s+(+v||0),0);
-  const cpl        =monthLeads>0&&monthExp>0?(monthExp/monthLeads).toFixed(2):null;
-  const inProg     =tasks.filter(t=>t.status==='In Progress').length;
-  const overdue    =tasks.filter(t=>t.dueDate&&new Date(t.dueDate)<now&&t.status!=='Done').length;
+  const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-  const CARDS=[
-    {l:'In Progress',v:inProg,                             i:'ti-loader-2',     c:'#6366f1',bg:'#EEEEFF'},
-    {l:'Overdue',    v:overdue,                            i:'ti-alert-circle', c:'#ef4444',bg:'#FEE9E9'},
-    {l:'Leads (mtd)',v:monthLeads||'—',                   i:'ti-user-plus',    c:'#0891b2',bg:'#E0F5FB'},
-    {l:'Spend (mtd)',v:monthExp?`$${monthExp.toLocaleString()}`:'—',i:'ti-cash',c:'#10b981',bg:'#E0F7EF'},
-    {l:'Cost/Lead',  v:cpl?`$${cpl}`:'—',                 i:'ti-coin',         c:'#f59e0b',bg:'#FEF4DC'},
-  ];
-
+  // Team ongoing tasks — exclude Done
   const mStats=team.map(m=>({
     ...m,
-    todo:  tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='To Do').length,
-    ip:    tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='In Progress').length,
-    review:tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='Review').length,
-    done:  tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='Done').length,
+    todo:   tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='To Do').length,
+    ip:     tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='In Progress').length,
+    review: tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='Review').length,
+    total:  tasks.filter(t=>getIds(t).includes(m.id)&&t.status!=='Done').length,
   }));
 
-  const eKpiSum=ENTITIES.map(e=>{
+  // KPI overview by entity — text + check
+  const eKpiSummary=ENTITIES.map(e=>{
     const ek=kpis.filter(k=>k.entity===e);
-    if(!ek.length) return {e,pct:null};
-    const avg=ek.reduce((s,k)=>s+(k.target>0?Math.min(100,(k.current/k.target)*100):0),0)/ek.length;
-    return {e,pct:Math.round(avg)};
+    return {e, kpis:ek};
+  });
+
+  // All tasks sorted by deadline — overdue first, then nearest, then no date
+  const sortedTasks=[...tasks].sort((a,b)=>{
+    const aOver=a.dueDate&&a.dueDate<todayKey&&a.status!=='Done';
+    const bOver=b.dueDate&&b.dueDate<todayKey&&b.status!=='Done';
+    if(aOver&&!bOver) return -1;
+    if(!aOver&&bOver) return 1;
+    if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if(a.dueDate&&!b.dueDate) return -1;
+    if(!a.dueDate&&b.dueDate) return 1;
+    return 0;
   });
 
   return (
     <div>
       <PageHeader title="Dashboard" sub={`${fyLabel(fy)} · ${now.toLocaleDateString('en-SG',{month:'long',year:'numeric'})}`}/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
-        {CARDS.map(c=>(
-          <Card key={c.l} style={{padding:'16px'}}>
-            <div style={{width:36,height:36,borderRadius:10,background:c.bg,
-              display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
-              <i className={`ti ${c.i}`} style={{fontSize:17,color:c.c}} aria-hidden/>
-            </div>
-            <div style={{fontSize:22,fontWeight:700,color:TXT,marginBottom:2}}>{c.v}</div>
-            <div style={{fontSize:11,color:TXT2,fontWeight:500}}>{c.l}</div>
-          </Card>
-        ))}
-      </div>
+
       <div style={{display:'grid',gridTemplateColumns:'1.2fr 0.8fr',gap:16,marginBottom:16}}>
+
+        {/* Team ongoing tasks */}
         <Card style={{padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-            <span style={{fontSize:14,fontWeight:700,color:TXT}}>Team workload</span>
+            <span style={{fontSize:14,fontWeight:700,color:TXT}}>Team's ongoing tasks</span>
             <button onClick={()=>setPage('tasks')} style={{background:'#EEEEFF',border:'none',
               cursor:'pointer',fontSize:12,color:'#6366f1',fontWeight:600,padding:'5px 12px',
               borderRadius:8,fontFamily:F}}>View tasks →</button>
           </div>
-          {mStats.map(m=>{
-            const total=m.todo+m.ip+m.review+m.done;
-            return (
-              <div key={m.id} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-                <Avatar name={m.name} color={m.color} size={30}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                    <span style={{fontSize:13,fontWeight:600,color:TXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.name}</span>
-                    <span style={{fontSize:11,color:TXT2,whiteSpace:'nowrap',marginLeft:4}}>{m.todo+m.ip+m.review} active</span>
-                  </div>
-                  <div style={{display:'flex',gap:2,height:6,borderRadius:3,overflow:'hidden',background:'#EEF1F9'}}>
-                    {total===0&&<div style={{flex:1,background:'#EEF1F9'}}/>}
-                    {m.todo>0&&   <div style={{flex:m.todo,  background:'#CBD5E1'}}/>}
-                    {m.ip>0&&     <div style={{flex:m.ip,    background:'#6366f1'}}/>}
-                    {m.review>0&& <div style={{flex:m.review,background:'#f59e0b'}}/>}
-                    {m.done>0&&   <div style={{flex:m.done,  background:'#10b981'}}/>}
-                  </div>
+          {mStats.map(m=>(
+            <div key={m.id} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+              <Avatar name={m.name} color={m.color} size={30}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                  <span style={{fontSize:13,fontWeight:600,color:TXT,overflow:'hidden',
+                    textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.name}</span>
+                  <span style={{fontSize:11,color:TXT2,whiteSpace:'nowrap',marginLeft:4}}>
+                    {m.total} active
+                  </span>
+                </div>
+                <div style={{display:'flex',gap:2,height:6,borderRadius:3,
+                  overflow:'hidden',background:'#EEF1F9'}}>
+                  {m.total===0&&<div style={{flex:1,background:'#EEF1F9'}}/>}
+                  {m.todo>0&&   <div style={{flex:m.todo,  background:'#CBD5E1'}}/>}
+                  {m.ip>0&&     <div style={{flex:m.ip,    background:'#6366f1'}}/>}
+                  {m.review>0&& <div style={{flex:m.review,background:'#f59e0b'}}/>}
                 </div>
               </div>
-            );
-          })}
-          <div style={{display:'flex',gap:14,marginTop:12,paddingTop:12,borderTop:`1px solid ${TBORDER}`}}>
-            {[['#CBD5E1','To Do'],['#6366f1','In Progress'],['#f59e0b','Review'],['#10b981','Done']].map(([c,l])=>(
+            </div>
+          ))}
+          <div style={{display:'flex',gap:14,marginTop:12,paddingTop:12,
+            borderTop:`1px solid ${TBORDER}`}}>
+            {[['#CBD5E1','To Do'],['#6366f1','In Progress'],['#f59e0b','Review']].map(([c,l])=>(
               <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
                 <div style={{width:8,height:8,borderRadius:2,background:c}}/>
                 <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{l}</span>
@@ -443,61 +434,124 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
             ))}
           </div>
         </Card>
-        <Card style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+
+        {/* KPI overview — text + check */}
+        <Card style={{padding:'18px 20px',overflow:'auto',maxHeight:340}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <span style={{fontSize:14,fontWeight:700,color:TXT}}>KPI overview</span>
             <button onClick={()=>setPage('kpis')} style={{background:'#EEEEFF',border:'none',
               cursor:'pointer',fontSize:12,color:'#6366f1',fontWeight:600,padding:'5px 12px',
               borderRadius:8,fontFamily:F}}>View →</button>
           </div>
-          {eKpiSum.map(({e,pct})=>{
-            const c=EC[e]||{a:'#94a3b8'};
+          {eKpiSummary.map(({e,kpis:ek})=>{
+            const {a,bg}=EC[e]||{a:'#94a3b8',bg:'#F1F5F9'};
             return (
               <div key={e} style={{marginBottom:14}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                  <div style={{display:'flex',alignItems:'center',gap:7}}>
-                    <div style={{width:8,height:8,borderRadius:2,background:c.a}}/>
-                    <span style={{fontSize:13,fontWeight:600,color:TXT}}>{e}</span>
-                  </div>
-                  <span style={{fontSize:12,color:pct!==null?c.a:TXT2,fontWeight:600}}>{pct===null?'—':`${pct}%`}</span>
+                {/* Entity label */}
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:a,flexShrink:0}}/>
+                  <span style={{fontSize:12,fontWeight:700,color:TXT}}>{e}</span>
+                  {ek.length===0&&<span style={{fontSize:10,color:TXT2,fontWeight:400}}>— no KPIs</span>}
                 </div>
-                <div style={{height:6,borderRadius:3,background:'#EEF1F9',overflow:'hidden'}}>
-                  {pct!==null&&<div style={{width:`${pct}%`,height:'100%',background:c.a,borderRadius:3}}/>}
-                </div>
+                {/* KPI list */}
+                {ek.map(k=>{
+                  const pct=k.target>0?Math.min(100,Math.round((k.current/k.target)*100)):0;
+                  const done=pct>=100;
+                  const unit=KPI_UNITS[k.type]||'';
+                  const pre=unit==='$';
+                  return (
+                    <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,
+                      padding:'4px 8px',borderRadius:7,marginBottom:3,
+                      background:done?'#F0FDF4':'#F7F8FD',
+                      border:`1px solid ${done?'#BBF7D0':BORDER}`}}>
+                      {/* Check or circle */}
+                      <div style={{width:16,height:16,borderRadius:'50%',flexShrink:0,
+                        background:done?'#10b981':'transparent',
+                        border:`1.5px solid ${done?'#10b981':'#CBD5E1'}`,
+                        display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        {done&&<i className="ti ti-check" style={{fontSize:9,color:'white'}} aria-hidden/>}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <span style={{fontSize:11,fontWeight:500,
+                          color:done?'#047857':TXT,
+                          textDecoration:done?'none':'none'}}>
+                          {k.type}
+                        </span>
+                        {!done&&k.target>0&&(
+                          <span style={{fontSize:10,color:TXT2,marginLeft:6}}>
+                            {pre?unit:''}{Number(k.current||0).toLocaleString()}{!pre?unit:''} / {pre?unit:''}{Number(k.target||0).toLocaleString()}{!pre?unit:''} ({pct}%)
+                          </span>
+                        )}
+                        {done&&(
+                          <span style={{fontSize:10,color:'#10b981',marginLeft:6,fontWeight:600}}>
+                            Achieved
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </Card>
       </div>
+
+      {/* All tasks sorted by deadline */}
       <Card style={{padding:'18px 20px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
           <span style={{fontSize:14,fontWeight:700,color:TXT}}>All tasks</span>
-          <span style={{background:'#EEF1F9',color:TXT2,fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:99}}>{tasks.length} total</span>
+          <span style={{background:'#EEF1F9',color:TXT2,fontSize:11,fontWeight:600,
+            padding:'3px 10px',borderRadius:99}}>{tasks.length} total</span>
         </div>
-        {tasks.length===0&&<p style={{fontSize:13,color:TXT2,margin:0,textAlign:'center',padding:'24px 0'}}>No tasks yet — head to Tasks to add some.</p>}
-        {tasks.slice(0,8).map(t=>{
+        {tasks.length===0&&(
+          <p style={{fontSize:13,color:TXT2,margin:0,textAlign:'center',padding:'24px 0'}}>
+            No tasks yet — head to Tasks to add some.
+          </p>
+        )}
+        {sortedTasks.slice(0,10).map(t=>{
           const ids=getIds(t);
           const assignees=team.filter(m=>ids.includes(m.id));
-          const od=t.dueDate&&new Date(t.dueDate)<now&&t.status!=='Done';
+          const od=t.dueDate&&t.dueDate<todayKey&&t.status!=='Done';
           const stDone=(t.subtasks||[]).filter(s=>s.done).length;
           const stTotal=(t.subtasks||[]).length;
+          const daysUntil=t.dueDate?Math.round((new Date(t.dueDate+'T00:00:00')-now)/(1000*60*60*24)):null;
+          const nearingSoon=daysUntil!==null&&daysUntil>=0&&daysUntil<=3;
           return (
-            <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:`1px solid ${TBORDER}`}}>
-              <div style={{width:8,height:8,borderRadius:2,background:CC[t.status]||'#94a3b8',flexShrink:0}}/>
-              <span style={{flex:1,fontSize:13,color:TXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</span>
+            <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',
+              borderBottom:`1px solid ${TBORDER}`}}>
+              <div style={{width:8,height:8,borderRadius:2,
+                background:CC[t.status]||'#94a3b8',flexShrink:0}}/>
+              <span style={{flex:1,fontSize:13,color:TXT,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</span>
               {t.recurring&&<i className="ti ti-repeat" style={{fontSize:11,color:'#94a3b8'}} aria-hidden/>}
-              {stTotal>0&&<span style={{fontSize:10,color:TXT2,background:'#EEF1F9',padding:'2px 7px',borderRadius:99,fontWeight:600}}>{stDone}/{stTotal}</span>}
+              {stTotal>0&&<span style={{fontSize:10,color:TXT2,background:'#EEF1F9',
+                padding:'2px 7px',borderRadius:99,fontWeight:600}}>{stDone}/{stTotal}</span>}
               {t.entity&&<Chip label={t.entity} ec={t.entity}/>}
-              <span style={{fontSize:11,color:od?'#ef4444':TXT2,fontWeight:od?600:400,whiteSpace:'nowrap'}}>{t.status}</span>
+              {/* Due date badge */}
+              {t.dueDate&&(
+                <span style={{fontSize:10,fontWeight:600,whiteSpace:'nowrap',
+                  padding:'2px 8px',borderRadius:99,
+                  background:od?'#FEE9E9':nearingSoon?'#FEF4DC':'#EEF1F9',
+                  color:od?'#dc2626':nearingSoon?'#92400e':TXT2}}>
+                  {od?'⚠ Overdue':nearingSoon?`Due in ${daysUntil}d`:t.dueDate}
+                </span>
+              )}
+              <span style={{fontSize:11,color:TXT2,whiteSpace:'nowrap'}}>{t.status}</span>
               {assignees.length>0&&<AvatarStack assignees={assignees} size={22}/>}
             </div>
           );
         })}
+        {sortedTasks.length>10&&(
+          <button onClick={()=>setPage('tasks')} style={{marginTop:10,background:'none',border:'none',
+            cursor:'pointer',color:'#6366f1',fontSize:12,fontWeight:600,fontFamily:F,padding:'4px 0'}}>
+            View all {sortedTasks.length} tasks →
+          </button>
+        )}
       </Card>
     </div>
   );
 }
-
 /* ── Tasks ──────────────────────────────────────────────────────────────────── */
 function TasksPage({team,tasks,saveTasks}) {
   const [fm,setFm]=useState('all');
