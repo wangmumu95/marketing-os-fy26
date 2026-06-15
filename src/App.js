@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as XLSX from 'xlsx';
-import * as XLSX from 'xlsx';
 
 const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','Others'];
 const EC = {
