@@ -1022,9 +1022,34 @@ function CalendarPage({team,tasks}) {
   const toKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const todayKey=toKey(new Date());
 
+  // Check if a recurring task falls on a given day
+  const isRecurringOn=(task,date)=>{
+    if(!task.recurring||!task.dueDate) return false;
+    const start=new Date(task.dueDate+'T00:00:00');
+    if(date<start) return false; // don't show before original due date
+    if(toKey(date)===task.dueDate) return false; // already shown as direct match
+    if(task.recurring==='weekly'){
+      const diff=Math.round((date-start)/(1000*60*60*24));
+      return diff%7===0;
+    }
+    if(task.recurring==='monthly'){
+      return date.getDate()===start.getDate();
+    }
+    if(task.recurring==='quarterly'){
+      const mDiff=(date.getFullYear()-start.getFullYear())*12+(date.getMonth()-start.getMonth());
+      return date.getDate()===start.getDate()&&mDiff%3===0&&mDiff>0;
+    }
+    if(task.recurring==='yearly'){
+      return date.getDate()===start.getDate()&&date.getMonth()===start.getMonth()&&date.getFullYear()>start.getFullYear();
+    }
+    return false;
+  };
+
   const tasksForDay=d=>{
     const k=toKey(d);
-    return tasks.filter(t=>t.dueDate===k);
+    const direct=tasks.filter(t=>t.dueDate===k);
+    const recurring=tasks.filter(t=>t.recurring&&isRecurringOn(t,d));
+    return [...direct,...recurring];
   };
 
   const getTaskColor=t=>{
@@ -1130,14 +1155,14 @@ function CalendarPage({team,tasks}) {
                   const od=t.status!=='Done'&&key<todayKey;
                   const bgColor=od?'#ef4444':done?'#10b981':c;
                   return (
-                    <div key={t.id} style={{
-                      background:bgColor,
-                      color:'white',
+                    <div key={t.id+key} style={{
+                      background:bgColor,color:'white',
                       fontSize:10,fontWeight:600,padding:'2px 7px',
                       borderRadius:5,marginBottom:2,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                      opacity:done?0.6:1}}>
-                      {t.title}
+                      opacity:done?0.6:1,display:'flex',alignItems:'center',gap:3}}>
+                      {t.recurring&&<i className="ti ti-repeat" style={{fontSize:8,flexShrink:0}}/>}
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{t.title}</span>
                     </div>
                   );
                 })}
