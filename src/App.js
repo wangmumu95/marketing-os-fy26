@@ -26,6 +26,51 @@ const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
 const TEAM_PASSWORD = 'Panpac3003';
 
+const EVENT_TYPES = {
+  'Shooting':   {color:'#0891b2',bg:'#E0F5FB'},
+  'Activation': {color:'#10b981',bg:'#E0F7EF'},
+  'Leave':      {color:'#f59e0b',bg:'#FEF4DC'},
+  'Event':      {color:'#8b5cf6',bg:'#F0ECFF'},
+  'Other':      {color:'#94a3b8',bg:'#F1F5F9'},
+};
+
+// Singapore Public Holidays (fixed + approximate for lunar)
+const SG_HOLIDAYS = {
+  '2025-01-01':"New Year's Day",
+  '2025-01-29':'Chinese New Year',
+  '2025-01-30':'Chinese New Year Day 2',
+  '2025-03-31':'Hari Raya Puasa',
+  '2025-04-18':'Good Friday',
+  '2025-05-01':'Labour Day',
+  '2025-05-12':'Vesak Day',
+  '2025-06-07':'Hari Raya Haji',
+  '2025-08-09':'National Day',
+  '2025-10-20':'Deepavali',
+  '2025-12-25':'Christmas Day',
+  '2026-01-01':"New Year's Day",
+  '2026-02-17':'Chinese New Year',
+  '2026-02-18':'Chinese New Year Day 2',
+  '2026-03-20':'Hari Raya Puasa',
+  '2026-04-03':'Good Friday',
+  '2026-05-01':'Labour Day',
+  '2026-05-27':'Hari Raya Haji',
+  '2026-05-31':'Vesak Day',
+  '2026-08-09':'National Day',
+  '2026-11-07':'Deepavali',
+  '2026-12-25':'Christmas Day',
+  '2027-01-01':"New Year's Day",
+  '2027-02-06':'Chinese New Year',
+  '2027-02-07':'Chinese New Year Day 2',
+  '2027-03-10':'Hari Raya Puasa',
+  '2027-03-26':'Good Friday',
+  '2027-05-01':'Labour Day',
+  '2027-05-17':'Hari Raya Haji',
+  '2027-05-20':'Vesak Day',
+  '2027-08-09':'National Day',
+  '2027-10-27':'Deepavali',
+  '2027-12-25':'Christmas Day',
+};
+
 const F = "'Calibri','Trebuchet MS',Arial,sans-serif";
 const PAGE  = '#EEF1F9';
 const CARD  = '#FFFFFF';
@@ -269,6 +314,7 @@ export default function App() {
   const [expenses,setExp]= useState({});
   const [leads,setLeads] = useState({});
   const [budgets,setBudgets]=useState({});
+  const [events,setEvents]=useState([]);
   const [fy,setFy]       = useState(fyNow());
   const [ready,setReady] = useState(false);
   const [authed,setAuthed]= useState(()=>localStorage.getItem('mkt_auth')==='true');
@@ -280,11 +326,11 @@ export default function App() {
   useEffect(()=>{
     if(!authed){ setReady(false); return; }
     (async()=>{
-      const [t,tk,k,e,l,b]=await Promise.all([
+      const [t,tk,k,e,l,b,ev]=await Promise.all([
         ld('mkt_team',DEFAULT_TEAM),ld('mkt_tasks',[]),
-        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),ld('mkt_budgets',{}),
+        ld('mkt_kpis',[]),ld('mkt_exp',{}),ld('mkt_leads',{}),ld('mkt_budgets',{}),ld('mkt_events',[]),
       ]);
-      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setBudgets(b);setReady(true);
+      setTeam(t);setTasks(tk);setKpis(k);setExp(e);setLeads(l);setBudgets(b);setEvents(ev);setReady(true);
     })();
   },[authed]);
 
@@ -303,6 +349,7 @@ export default function App() {
   const svExp   = e=>{setExp(e);  sv('mkt_exp',e);};
   const svLeads = l=>{setLeads(l);sv('mkt_leads',l);};
   const svBudgets=b=>{setBudgets(b);sv('mkt_budgets',b);};
+  const svEvents =e=>{setEvents(e); sv('mkt_events',e);};
 
   const NAV=[
     {id:'dashboard',icon:'ti-layout-dashboard',label:'Dashboard'},
@@ -396,7 +443,7 @@ export default function App() {
       <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
-        {page==='calendar'&& <CalendarPage team={team} tasks={tasks}/>}
+        {page==='calendar'&& <CalendarPage team={team} tasks={tasks} events={events} saveEvents={svEvents}/>}
         {page==='kpis'&&     <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
         {page==='finance'&&  <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
         {page==='settings'&& <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
@@ -1593,17 +1640,17 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
   );
 }
 /* ── Calendar ───────────────────────────────────────────────────────────────── */
-function CalendarPage({team,tasks}) {
-  const [cur,setCur]=useState(new Date());
-  const [selected,setSelected]=useState(null);
+function CalendarPage({team,tasks,events,saveEvents}) {
+  const [cur,setCur]     =useState(new Date());
+  const [eventModal,setEM]=useState(null); // null | {date} | {edit: event}
   const yr=cur.getFullYear(), mo=cur.getMonth();
 
   const MONTHS=['January','February','March','April','May','June',
     'July','August','September','October','November','December'];
   const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  // Build calendar grid (Monday first)
-  const firstDay=(new Date(yr,mo,1).getDay()+6)%7; // 0=Mon
+  // Calendar grid
+  const firstDay=(new Date(yr,mo,1).getDay()+6)%7;
   const daysInMonth=new Date(yr,mo+1,0).getDate();
   const cells=[];
   for(let i=0;i<firstDay;i++) cells.push({d:new Date(yr,mo,-(firstDay-i-1)),cur:false});
@@ -1613,34 +1660,31 @@ function CalendarPage({team,tasks}) {
   const toKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const todayKey=toKey(new Date());
 
-  // Check if a recurring task falls on a given day
+  // Check recurring tasks
   const isRecurringOn=(task,date)=>{
     if(!task.recurring||!task.dueDate) return false;
     const start=new Date(task.dueDate+'T00:00:00');
-    if(date<start) return false; // don't show before original due date
-    if(toKey(date)===task.dueDate) return false; // already shown as direct match
-    if(task.recurring==='weekly'){
-      const diff=Math.round((date-start)/(1000*60*60*24));
-      return diff%7===0;
-    }
-    if(task.recurring==='monthly'){
-      return date.getDate()===start.getDate();
-    }
-    if(task.recurring==='quarterly'){
-      const mDiff=(date.getFullYear()-start.getFullYear())*12+(date.getMonth()-start.getMonth());
-      return date.getDate()===start.getDate()&&mDiff%3===0&&mDiff>0;
-    }
-    if(task.recurring==='yearly'){
-      return date.getDate()===start.getDate()&&date.getMonth()===start.getMonth()&&date.getFullYear()>start.getFullYear();
-    }
+    if(date<start) return false;
+    if(toKey(date)===task.dueDate) return false;
+    if(task.recurring==='weekly') return Math.round((date-start)/(1000*60*60*24))%7===0;
+    if(task.recurring==='monthly') return date.getDate()===start.getDate();
+    if(task.recurring==='quarterly'){const m=(date.getFullYear()-start.getFullYear())*12+(date.getMonth()-start.getMonth());return date.getDate()===start.getDate()&&m%3===0&&m>0;}
+    if(task.recurring==='yearly') return date.getDate()===start.getDate()&&date.getMonth()===start.getMonth()&&date.getFullYear()>start.getFullYear();
     return false;
   };
 
   const tasksForDay=d=>{
     const k=toKey(d);
-    const direct=tasks.filter(t=>t.dueDate===k);
-    const recurring=tasks.filter(t=>t.recurring&&isRecurringOn(t,d));
-    return [...direct,...recurring];
+    return [...tasks.filter(t=>t.dueDate===k),...tasks.filter(t=>t.recurring&&isRecurringOn(t,d))];
+  };
+
+  const eventsForDay=d=>{
+    const k=toKey(d);
+    return events.filter(ev=>{
+      if(ev.date===k) return true;
+      if(ev.endDate&&ev.date<=k&&ev.endDate>=k) return true;
+      return false;
+    });
   };
 
   const getTaskColor=t=>{
@@ -1649,18 +1693,24 @@ function CalendarPage({team,tasks}) {
     return m?m.color:EC[t.entity]?.a||'#94a3b8';
   };
 
-  // All members who have tasks this month (for legend)
-  const activeMembers=team.filter(m=>
-    tasks.some(t=>getIds(t).includes(m.id)&&t.dueDate&&
-      t.dueDate.startsWith(`${yr}-${String(mo+1).padStart(2,'0')}`))
-  );
+  // Legend: active members this month
+  const monthStr=`${yr}-${String(mo+1).padStart(2,'0')}`;
+  const activeMembers=team.filter(m=>tasks.some(t=>getIds(t).includes(m.id)&&t.dueDate?.startsWith(monthStr)));
+
+  const addEvent  =d=>{saveEvents([...events,{...d,id:mkId()}]);setEM(null);};
+  const upEvent   =(id,d)=>{saveEvents(events.map(e=>e.id===id?{...e,...d}:e));setEM(null);};
+  const delEvent  =id=>{saveEvents(events.filter(e=>e.id!==id));setEM(null);};
 
   return (
     <div>
-      <PageHeader title="Calendar"/>
+      <PageHeader title="Calendar" action={
+        <PBtn onClick={()=>setEM({date:todayKey})}>
+          <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
+        </PBtn>
+      }/>
 
-      {/* Month nav */}
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+      {/* Month nav + legend */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,flexWrap:'wrap'}}>
         <button onClick={()=>setCur(new Date(yr,mo-1,1))} style={{
           background:CARD,border:`1px solid ${BORDER}`,cursor:'pointer',
           width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',
@@ -1681,17 +1731,26 @@ function CalendarPage({team,tasks}) {
           padding:'6px 14px',borderRadius:9,fontSize:12,fontWeight:600,fontFamily:F}}>
           Today
         </button>
+
         {/* Legend */}
-        {activeMembers.length>0&&(
-          <div style={{display:'flex',gap:10,marginLeft:'auto',flexWrap:'wrap'}}>
-            {activeMembers.map(m=>(
-              <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
-                <div style={{width:10,height:10,borderRadius:3,background:m.color,flexShrink:0}}/>
-                <span style={{fontSize:11,color:TXT2,fontWeight:500}}>{m.name}</span>
-              </div>
-            ))}
+        <div style={{display:'flex',gap:10,marginLeft:'auto',flexWrap:'wrap',alignItems:'center'}}>
+          <div style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:10,height:10,borderRadius:2,background:'#ef4444'}}/>
+            <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Public holiday</span>
           </div>
-        )}
+          {Object.entries(EVENT_TYPES).map(([type,{color}])=>(
+            <div key={type} style={{display:'flex',alignItems:'center',gap:5}}>
+              <div style={{width:10,height:10,borderRadius:2,background:color}}/>
+              <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{type}</span>
+            </div>
+          ))}
+          {activeMembers.map(m=>(
+            <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:m.color}}/>
+              <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{m.name}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Calendar grid */}
@@ -1700,9 +1759,8 @@ function CalendarPage({team,tasks}) {
         <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',
           borderBottom:`2px solid ${TBORDER}`}}>
           {DAYS.map(d=>(
-            <div key={d} style={{padding:'10px 0',textAlign:'center',
-              fontSize:11,fontWeight:700,color:TXT2,
-              textTransform:'uppercase',letterSpacing:'0.06em'}}>
+            <div key={d} style={{padding:'10px 0',textAlign:'center',fontSize:11,
+              fontWeight:700,color:TXT2,textTransform:'uppercase',letterSpacing:'0.06em'}}>
               {d}
             </div>
           ))}
@@ -1713,49 +1771,72 @@ function CalendarPage({team,tasks}) {
           {cells.map((cell,i)=>{
             const key=toKey(cell.d);
             const isToday=key===todayKey;
+            const holiday=SG_HOLIDAYS[key];
             const dayTasks=tasksForDay(cell.d);
-            const overdue=dayTasks.filter(t=>t.status!=='Done'&&key<todayKey);
-            const show=dayTasks.slice(0,3);
-            const extra=dayTasks.length-3;
-            const isSelected=selected===key;
+            const dayEvents=eventsForDay(cell.d);
             const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
+            const allItems=[...dayEvents,...dayTasks];
+            const showItems=allItems.slice(0,3);
+            const extra=allItems.length-3;
             return (
-              <div key={i} onClick={()=>setSelected(isSelected?null:key)}
-                style={{minHeight:90,padding:'8px',
-                  borderRight:`1px solid ${TBORDER}`,
-                  borderBottom:`1px solid ${TBORDER}`,
-                  background:isSelected?'#F3F4FF':isToday?'#FAFAFF':isWeekend&&!cell.cur?'#FAFBFF':CARD,
+              <div key={i}
+                onClick={()=>setEM({date:key})}
+                style={{minHeight:100,padding:'6px',
+                  borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
+                  background:isToday?'#FAFAFF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
                   cursor:'pointer',transition:'background 0.1s'}}>
 
                 {/* Date number */}
-                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:4}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                  <span style={{fontSize:'9px',color:holiday?'#ef4444':TXT2,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,
+                    lineHeight:1.2,paddingRight:2}}>
+                    {holiday&&`🇸🇬 ${holiday}`}
+                  </span>
                   <span style={{
-                    width:24,height:24,borderRadius:'50%',
+                    width:22,height:22,borderRadius:'50%',flexShrink:0,
                     background:isToday?'#6366f1':'transparent',
                     color:isToday?'white':cell.cur?TXT:'#CBD5E1',
-                    fontSize:12,fontWeight:isToday?700:cell.cur?500:400,
+                    fontSize:11,fontWeight:isToday?700:cell.cur?500:400,
                     display:'flex',alignItems:'center',justifyContent:'center'}}>
                     {cell.d.getDate()}
                   </span>
                 </div>
 
-                {/* Tasks */}
-                {show.map(t=>{
-                  const c=getTaskColor(t);
-                  const done=t.status==='Done';
-                  const od=t.status!=='Done'&&key<todayKey;
-                  const bgColor=od?'#ef4444':done?'#10b981':c;
-                  return (
-                    <div key={t.id+key} style={{
-                      background:bgColor,color:'white',
-                      fontSize:10,fontWeight:600,padding:'2px 7px',
-                      borderRadius:5,marginBottom:2,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                      opacity:done?0.6:1,display:'flex',alignItems:'center',gap:3}}>
-                      {t.recurring&&<i className="ti ti-repeat" style={{fontSize:8,flexShrink:0}}/>}
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{t.title}</span>
-                    </div>
-                  );
+                {/* Events first, then tasks */}
+                {showItems.map((item,idx)=>{
+                  const isEvent=item.type!==undefined&&EVENT_TYPES[item.type];
+                  if(isEvent){
+                    const {color}=EVENT_TYPES[item.type]||{color:'#94a3b8'};
+                    const assignee=team.find(m=>m.id===item.assigneeId);
+                    return (
+                      <div key={item.id}
+                        onClick={e=>{e.stopPropagation();setEM({edit:item});}}
+                        style={{background:color,color:'white',fontSize:10,fontWeight:600,
+                          padding:'2px 6px',borderRadius:4,marginBottom:2,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                          display:'flex',alignItems:'center',gap:3}}>
+                        {assignee&&<span style={{fontSize:8,background:'rgba(255,255,255,0.3)',
+                          borderRadius:99,padding:'0 4px'}}>{ini(assignee.name)}</span>}
+                        {item.title}
+                      </div>
+                    );
+                  } else {
+                    const c=getTaskColor(item);
+                    const done=item.status==='Done';
+                    const od=item.status!=='Done'&&key<todayKey;
+                    return (
+                      <div key={item.id+key}
+                        style={{background:od?'#ef4444':done?'#10b981':c,
+                          color:'white',fontSize:10,fontWeight:600,padding:'2px 6px',
+                          borderRadius:4,marginBottom:2,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                          opacity:done?0.6:1,display:'flex',alignItems:'center',gap:3}}>
+                        {item.recurring&&<i className="ti ti-repeat" style={{fontSize:8,flexShrink:0}}/>}
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{item.title}</span>
+                      </div>
+                    );
+                  }
                 })}
                 {extra>0&&(
                   <div style={{fontSize:10,color:TXT2,fontWeight:600,padding:'1px 4px'}}>
@@ -1768,41 +1849,75 @@ function CalendarPage({team,tasks}) {
         </div>
       </Card>
 
-      {/* Selected day task list */}
-      {selected&&(()=>{
-        const dayTasks=tasks.filter(t=>t.dueDate===selected);
-        if(!dayTasks.length) return null;
-        const d=new Date(selected+'T00:00:00');
-        return (
-          <Card style={{padding:'16px 20px',marginTop:14}}>
-            <div style={{fontSize:13,fontWeight:700,color:TXT,marginBottom:12}}>
-              Tasks due {d.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long'})}
-              <span style={{background:'#EEF1F9',color:TXT2,fontSize:11,fontWeight:600,
-                padding:'2px 8px',borderRadius:99,marginLeft:8}}>{dayTasks.length}</span>
-            </div>
-            {dayTasks.map(t=>{
-              const ids=getIds(t);
-              const assignees=team.filter(m=>ids.includes(m.id));
-              const c=getTaskColor(t);
-              const od=t.status!=='Done'&&selected<todayKey;
-              return (
-                <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,
-                  padding:'8px 0',borderBottom:`1px solid ${TBORDER}`}}>
-                  <div style={{width:3,height:32,borderRadius:2,background:c,flexShrink:0}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:500,color:od?'#dc2626':TXT,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</div>
-                    <div style={{fontSize:11,color:TXT2,marginTop:1}}>{t.status}{od?' · Overdue':''}</div>
-                  </div>
-                  {t.entity&&<Chip label={t.entity} ec={t.entity}/>}
-                  {assignees.length>0&&<AvatarStack assignees={assignees} size={22}/>}
-                </div>
-              );
-            })}
-          </Card>
-        );
-      })()}
+      {/* Event modal */}
+      {eventModal&&(
+        <EventModal
+          event={eventModal.edit||null}
+          defaultDate={eventModal.date||todayKey}
+          team={team}
+          onClose={()=>setEM(null)}
+          onSave={d=>eventModal.edit?upEvent(eventModal.edit.id,d):addEvent(d)}
+          onDelete={eventModal.edit?()=>delEvent(eventModal.edit.id):null}
+        />
+      )}
     </div>
+  );
+}
+
+function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
+  const [f,setF]=useState({
+    title:event?.title||'',
+    type:event?.type||'Event',
+    date:event?.date||defaultDate,
+    endDate:event?.endDate||'',
+    assigneeId:event?.assigneeId||'',
+    notes:event?.notes||'',
+  });
+  const s=(k,v)=>setF(x=>({...x,[k]:v}));
+  const {color}=EVENT_TYPES[f.type]||{color:'#6366f1'};
+  return (
+    <Modal title={event?'Edit event':'New event'} onClose={onClose}>
+      <Lbl s="Event title">
+        <Inp value={f.title} onChange={e=>s('title',e.target.value)} placeholder="e.g. Product shoot, Geraldine on leave"/>
+      </Lbl>
+      <Lbl s="Event type">
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          {Object.entries(EVENT_TYPES).map(([type,{color:c}])=>(
+            <button key={type} onClick={()=>s('type',type)}
+              style={{padding:'5px 14px',borderRadius:99,border:`1.5px solid ${f.type===type?c:BORDER}`,
+                background:f.type===type?c:'transparent',color:f.type===type?'white':TXT2,
+                cursor:'pointer',fontSize:12,fontWeight:f.type===type?700:400,fontFamily:F}}>
+              {type}
+            </button>
+          ))}
+        </div>
+      </Lbl>
+      <Grid2>
+        <Lbl s="Date">
+          <Inp type="date" value={f.date} onChange={e=>s('date',e.target.value)}/>
+        </Lbl>
+        <Lbl s="End date (optional — for multi-day)">
+          <Inp type="date" value={f.endDate} onChange={e=>s('endDate',e.target.value)}/>
+        </Lbl>
+      </Grid2>
+      <Lbl s="Who (optional)">
+        <Sel value={f.assigneeId} onChange={e=>s('assigneeId',e.target.value)}>
+          <option value="">Whole team / no individual</option>
+          {team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+        </Sel>
+      </Lbl>
+      <Lbl s="Notes (optional)">
+        <Inp value={f.notes} onChange={e=>s('notes',e.target.value)} placeholder="Additional details"/>
+      </Lbl>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:16,paddingTop:14,
+        borderTop:`1px solid ${TBORDER}`}}>
+        {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
+        <div style={{display:'flex',gap:8}}>
+          <GhostBtn onClick={onClose}>Cancel</GhostBtn>
+          <PBtn onClick={()=>f.title&&f.date&&onSave(f)} style={{background:color}}>Save event</PBtn>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
