@@ -931,7 +931,66 @@ function KpisPage({team,kpis,saveKpis,fy}) {
   );
 }
 
-/* ── Finance ────────────────────────────────────────────────────────────────── */
+function KpiModal({title,kpi,entity,onClose,onSave,onDelete,team}) {
+  const [f,setF]=useState({
+    entity:kpi?.entity||entity,
+    title:kpi?.title||kpi?.type||'',
+    assigneeId:kpi?.assigneeId||'',
+    notes:kpi?.notes||'',
+    done:kpi?.done||false,
+  });
+  const s=(k,v)=>setF(x=>({...x,[k]:v}));
+  return (
+    <Modal title={title} onClose={onClose}>
+      <Lbl s="Entity">
+        <Sel value={f.entity} onChange={e=>s('entity',e.target.value)}>
+          {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+        </Sel>
+      </Lbl>
+      <Lbl s="What needs to be achieved by end of FY">
+        <textarea value={f.title} onChange={e=>s('title',e.target.value)}
+          placeholder="e.g. Increase website leads to 500 per month by March"
+          rows={3}
+          style={{...inputStyle,resize:'vertical'}}/>
+      </Lbl>
+      <Lbl s="Assigned to (optional)">
+        <Sel value={f.assigneeId} onChange={e=>s('assigneeId',e.target.value)}>
+          <option value="">Team / no individual</option>
+          {team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+        </Sel>
+      </Lbl>
+      <Lbl s="Notes (optional)">
+        <Inp value={f.notes} onChange={e=>s('notes',e.target.value)}
+          placeholder="Context or how this will be measured"/>
+      </Lbl>
+      {kpi&&(
+        <div onClick={()=>s('done',!f.done)}
+          style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',
+            padding:'10px 14px',borderRadius:10,marginBottom:4,
+            background:f.done?'#F0FDF4':'#F7F8FD',
+            border:`1px solid ${f.done?'#BBF7D0':BORDER}`}}>
+          <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,
+            border:`2px solid ${f.done?'#10b981':BORDER}`,
+            background:f.done?'#10b981':'transparent',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {f.done&&<i className="ti ti-check" style={{fontSize:11,color:'white'}} aria-hidden/>}
+          </div>
+          <span style={{fontSize:13,fontWeight:500,color:f.done?'#047857':TXT}}>
+            {f.done?'Achieved ✓':'Mark as achieved'}
+          </span>
+        </div>
+      )}
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:16,
+        paddingTop:14,borderTop:`1px solid ${TBORDER}`}}>
+        {onDelete?<GhostBtn danger onClick={onDelete}>Delete</GhostBtn>:<span/>}
+        <div style={{display:'flex',gap:8}}>
+          <GhostBtn onClick={onClose}>Cancel</GhostBtn>
+          <PBtn onClick={()=>f.title&&onSave(f)}>Save KPI</PBtn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
   const [tab,setTab]          =useState('expenses');
   const [expEdit,setExpEdit]  =useState(null);
