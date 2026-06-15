@@ -1,6 +1,8 @@
 /* eslint-disable */
 import { useState, useEffect } from "react";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','Others'];
 const EC = {
@@ -362,7 +364,7 @@ export default function App() {
     {id:'tasks',     icon:'ti-layout-kanban',    label:'Tasks'},
     {id:'calendar',  icon:'ti-calendar',         label:'Calendar'},
     {id:'kpis',      icon:'ti-target',           label:'KPIs'},
-    {id:'finance',   icon:'ti-report-money',     label:'Expense$'},
+    {id:'finance',   icon:'ti-report-money',     label:'Finance'},
     {id:'conversion',icon:'ti-arrows-exchange',  label:'Conversion'},
     {id:'settings',  icon:'ti-settings',         label:'Settings'},
   ];
@@ -1932,173 +1934,254 @@ function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
 /* ── Conversion ─────────────────────────────────────────────────────────────── */
 const LEAD_SOURCES=['Website','Referral','Social Media','Cold Call','Walk-in','Event','Other'];
 
-// Parse tab-separated Excel paste
-function parsePaste(text){
-  const rows=text.trim().split('\n').map(r=>r.split('\t').map(c=>c.trim().replace(/^"|"$/g,'')));
-  if(rows.length<2) return {headers:[],data:[]};
-  return {headers:rows[0],data:rows.slice(1).filter(r=>r.some(c=>c))};
+// Parse Excel/CSV file via SheetJS → {headers:string[], rows:string[][]}
+async function parseExcelFile(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject('File read error — please try again.');
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Find first row that has actual content (skip truly empty rows)
+        const hIdx=raw.findIndex(r=>r.some(c=>String(c).trim()));
+        if(hIdx<0||raw.length<=hIdx+1){reject('No data found in file.');return;}
+        const headers=raw[hIdx].map(h=>String(h).trim());
+        const rows=raw.slice(hIdx+1)
+          .filter(r=>r.some(c=>String(c).trim()))
+          .map(r=>headers.map((_,i)=>String(r[i]??'').trim()));
+        resolve({headers,rows});
+      }catch(err){reject('Could not read file — make sure it is .xlsx, .xls or .csv');}
+    };
+    reader.readAsArrayBuffer(file);
+  });
 }
 
-// Map a raw row (array) + headers to a lead object
+// Map a raw row (array) + headers array to a lead object
 function mapLead(row,headers){
-  const g=(h)=>{
-    const idx=headers.findIndex(x=>x.toLowerCase().replace(/[\s._/()]/g,'').includes(h));
+  const g=h=>{
+    const idx=headers.findIndex(x=>x.toLowerCase().replace(/[\s._/()\r\n]/g,'').includes(h));
     return idx>=0?(row[idx]||'').trim():'';
   };
   return {
     id:mkId(),
-    no:          g('nomth')||g('no'),
-    date:        g('leadsdate'),
-    source:      g('sourcesoflead'),
-    name:        g('contactname'),
-    company:     g('companypersonal')||g('company'),
-    email:       g('emailaddress')||g('email'),
-    phone:       g('phone'),
-    repeatHp:    g('repeathp')||g('repeat'),
-    moreThanOne: g('morethan1')||g('morethan'),
-    howMany:     g('howmany'),
-    primaryUse:  g('primaryuse'),
-    duration:    g('durationoflease')||g('duration'),
-    term:        g('shortlongterms')||g('shortlong'),
-    vehicle:     g('desiredvehicle')||g('vehicle'),
-    notes:       g('additionalinfo')||g('additional'),
-    salesRep:    g('salesrep'),
+    no:g('nomth')||g('no'),
+    date:g('leadsdate'),
+    source:g('sourcesoflead'),
+    name:g('contactname'),
+    company:g('companypersonal')||g('company'),
+    email:g('emailaddress')||g('email'),
+    phone:g('phone'),
+    repeatHp:g('repeathp')||g('repeat'),
+    moreThanOne:g('morethan1')||g('morethan'),
+    howMany:g('howmany'),
+    primaryUse:g('primaryuse'),
+    duration:g('durationoflease')||g('duration'),
+    term:g('shortlongterms')||g('short'),
+    vehicle:g('desiredvehicle')||g('vehicle'),
+    notes:g('additionalinfo')||g('additional'),
+    salesRep:g('salesrep'),
   };
 }
 
 // Map a raw row + headers to a closed deal object
 function mapDeal(row,headers){
-  const g=(h)=>{
-    const idx=headers.findIndex(x=>x.toLowerCase().replace(/[\s._/()\-]/g,'').includes(h));
+  const g=h=>{
+    const idx=headers.findIndex(x=>x.toLowerCase().replace(/[\s._/()\-\r\n]/g,'').includes(h));
     return idx>=0?(row[idx]||'').trim():'';
   };
   return {
     id:mkId(),
-    status:          g('st'),
-    contractNo:      g('rentalcontract')||g('contract'),
-    itemSN:          g('items/n')||g('itemsn'),
-    vehicleCondition:g('vehiclenewused')||g('vehicle'),
-    contractCount:   g('contractcount'),
-    month:           g('month'),
-    rentTerm:        g('periodrentterm')||g('period'),
-    rate:            g('rate'),
-    contractValue:   g('totalrate')||g('total'),
-    agreementDate:   g('agmtdate'),
-    startDate:       g('startdate'),
-    endDate:         g('schend'),
-    salesperson:     g('salesman'),
-    name:            g('clientname')||g('client'),
-    make:            g('make'),
-    model:           g('model'),
-    contractType:    g('contractnewcontractrenewcontract')||g('newcontract')||g('renewcontract'),
-    customerType:    g('customernewcustomerexistingcustomer')||g('newcustomer')||g('existingcustomer'),
-    fromMarketing:   null,
-    matchedLeadId:   null,
+    status:g('st'),
+    contractNo:g('rentalcontract'),
+    itemSN:g('items'),
+    vehicleCondition:g('vehiclenew'),
+    contractCount:g('contractcount'),
+    month:g('month'),
+    rentTerm:g('periodrent')||g('period'),
+    rate:g('rate'),
+    contractValue:g('totalrate')||g('total'),
+    agreementDate:g('agmtdate'),
+    startDate:g('startdate'),
+    endDate:g('schend'),
+    salesperson:g('salesman'),
+    name:g('clientname')||g('client'),
+    make:g('make'),
+    model:g('model'),
+    contractType:g('contractnew')||g('renewcontract'),
+    customerType:g('customernew')||g('existingcustomer'),
+    fromMarketing:null,
+    matchedLeadId:null,
   };
 }
 
+// Excel upload modal
 function ImportModal({type,onClose,onImport}){
-  const [text,setText]=useState('');
   const [preview,setPreview]=useState(null);
-  const [mode,setMode]=useState('add'); // 'add' | 'replace'
-
-  const parse=()=>{
-    const {headers,data}=parsePaste(text);
-    if(!data.length){alert('No data found. Make sure to include the header row.');return;}
-    const mapped=data.map(row=>type==='lead'?mapLead(row,headers):mapDeal(row,headers));
-    setPreview({headers,data,mapped});
-  };
-
+  const [mode,setMode]      =useState('add');
+  const [loading,setLoading]=useState(false);
+  const [error,setError]    =useState('');
   const isLead=type==='lead';
+
   const previewCols=isLead
     ?['name','company','phone','source','date','salesRep']
     :['name','contractNo','salesperson','contractValue','startDate','contractType','customerType'];
 
+  const handleFile=async e=>{
+    const file=e.target.files?.[0];
+    if(!file) return;
+    setLoading(true);setError('');setPreview(null);
+    try{
+      const {headers,rows}=await parseExcelFile(file);
+      const mapped=rows.map(row=>isLead?mapLead(row,headers):mapDeal(row,headers));
+      if(!mapped.length){setError('No data rows found in the file.');setLoading(false);return;}
+      setPreview({mapped,total:rows.length});
+    }catch(err){setError(String(err));}
+    setLoading(false);
+    e.target.value='';
+  };
+
   return (
     <Modal title={`Import ${isLead?'Marketing Leads':'Closed Customers'} from Excel`} onClose={onClose} wide>
-      <div style={{background:'#EEF1F9',borderRadius:10,padding:'12px 14px',marginBottom:14,fontSize:12,color:TXT2,lineHeight:1.6}}>
-        <strong style={{color:TXT}}>How to import:</strong><br/>
-        1. Open your Excel file<br/>
-        2. Select all rows including the header row<br/>
-        3. Copy (<strong>Ctrl+C</strong> / <strong>Cmd+C</strong>)<br/>
-        4. Paste into the box below (<strong>Ctrl+V</strong> / <strong>Cmd+V</strong>)
-        <br/><br/>
-        <strong style={{color:TXT}}>Expected headers ({isLead?'leads':'closed'}):</strong><br/>
-        <span style={{fontFamily:'monospace',fontSize:11}}>
+
+      <div style={{background:'#EEF1F9',borderRadius:10,padding:'12px 14px',marginBottom:16,
+        fontSize:12,color:TXT2,lineHeight:1.7}}>
+        <strong style={{color:TXT}}>Accepted formats:</strong> .xlsx · .xls · .csv<br/>
+        <strong style={{color:TXT}}>First row must be the header row.</strong> Column order doesn't matter — columns are auto-detected.<br/>
+        <strong style={{color:TXT}}>Expected columns:</strong><br/>
+        <span style={{fontFamily:'monospace',fontSize:10,color:'#6366f1'}}>
           {isLead
             ?'No. MTH · LEADS DATE · SOURCES OF LEADS · CONTACT NAME · COMPANY/PERSONAL NAME · EMAIL ADDRESS · PHONE · REPEAT HP · MORE THAN 1 · HOW MANY · PRIMARY USE · DURATION OF LEASE · SHORT / LONG TERMS · DESIRED VEHICLE · ADDITIONAL INFO · SALES REP'
             :'St · Rental Contract · Item S/N · Vehicle (New/Used) · Contract Count · Month · Period Rent Term · Rate · Total Rate · AgmtDate · StartDate · SchEnd · SALESMAN · Client Name · Make · Model · Contract · Customer'}
         </span>
       </div>
-      <Lbl s="Paste Excel data here">
-        <textarea value={text} onChange={e=>{setText(e.target.value);setPreview(null);}}
-          rows={6} placeholder="Paste your Excel data here (Ctrl+V)..."
-          style={{...inputStyle,resize:'vertical',fontFamily:'monospace',fontSize:11}}/>
-      </Lbl>
 
-      {!preview&&text&&(
-        <button onClick={parse} style={{background:'#6366f1',color:'white',border:'none',cursor:'pointer',
-          padding:'8px 18px',borderRadius:9,fontSize:13,fontWeight:600,fontFamily:F,marginBottom:14}}>
-          Preview import
-        </button>
+      {/* Upload zone */}
+      {!preview&&(
+        <label style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,
+          padding:'32px 24px',borderRadius:12,border:`2px dashed ${BORDER}`,cursor:'pointer',
+          background:'#FAFBFF',marginBottom:14,transition:'background 0.15s'}}
+          onMouseEnter={e=>e.currentTarget.style.background='#F0F0FF'}
+          onMouseLeave={e=>e.currentTarget.style.background='#FAFBFF'}>
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
+          {loading?(
+            <>
+              <div style={{width:48,height:48,borderRadius:14,background:'#EEEEFF',
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <i className="ti ti-loader-2" style={{fontSize:24,color:'#6366f1'}}/>
+              </div>
+              <div style={{fontSize:13,color:TXT2}}>Reading file…</div>
+            </>
+          ):(
+            <>
+              <div style={{width:48,height:48,borderRadius:14,background:'#EEEEFF',
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <i className="ti ti-file-spreadsheet" style={{fontSize:24,color:'#6366f1'}}/>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:14,fontWeight:700,color:TXT}}>Click to select your Excel file</div>
+                <div style={{fontSize:12,color:TXT2,marginTop:4}}>.xlsx · .xls · .csv supported</div>
+              </div>
+            </>
+          )}
+        </label>
       )}
 
+      {/* Error */}
+      {error&&(
+        <div style={{background:'#FEE9E9',border:'1px solid #FECACA',borderRadius:10,
+          padding:'10px 14px',marginBottom:14,fontSize:12,color:'#dc2626',fontWeight:500}}>
+          ⚠ {error}
+          <div style={{marginTop:6}}>
+            <label style={{color:'#6366f1',cursor:'pointer',textDecoration:'underline',fontSize:12}}>
+              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
+              Try a different file
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* Preview */}
       {preview&&(
         <>
           <div style={{background:'#E0F7EF',border:'1px solid #BBF7D0',borderRadius:10,
-            padding:'10px 14px',marginBottom:14}}>
-            <span style={{fontSize:13,fontWeight:700,color:'#047857'}}>
-              ✓ {preview.mapped.length} rows ready to import
-            </span>
-            <span style={{fontSize:12,color:'#065f46',marginLeft:8}}>
-              — check the preview below, then confirm
-            </span>
+            padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',
+            justifyContent:'space-between'}}>
+            <div>
+              <span style={{fontSize:13,fontWeight:700,color:'#047857'}}>
+                ✓ {preview.total} rows read
+              </span>
+              <span style={{fontSize:12,color:'#065f46',marginLeft:8}}>
+                — review the preview below then confirm
+              </span>
+            </div>
+            <label style={{fontSize:11,color:'#6366f1',cursor:'pointer',
+              textDecoration:'underline',fontFamily:F}}>
+              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
+              Upload different file
+            </label>
           </div>
 
           {/* Preview table */}
-          <div style={{overflowX:'auto',marginBottom:14,maxHeight:200,border:`1px solid ${BORDER}`,borderRadius:10}}>
+          <div style={{overflowX:'auto',marginBottom:14,maxHeight:220,
+            border:`1px solid ${BORDER}`,borderRadius:10}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
-              <thead style={{position:'sticky',top:0,background:'#F7F8FD'}}>
-                <tr>{previewCols.map(c=><th key={c} style={{...TH,padding:'7px 10px',textTransform:'capitalize'}}>{c}</th>)}</tr>
+              <thead style={{position:'sticky',top:0,background:'#F7F8FD',zIndex:1}}>
+                <tr>
+                  {previewCols.map(c=>(
+                    <th key={c} style={{...TH,padding:'8px 10px',textTransform:'capitalize',whiteSpace:'nowrap'}}>
+                      {c.replace(/([A-Z])/g,' $1').trim()}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {preview.mapped.slice(0,10).map((row,i)=>(
-                  <tr key={i} style={{borderTop:`1px solid ${TBORDER}`}}>
-                    {previewCols.map(c=><td key={c} style={{...TD,padding:'6px 10px',maxWidth:140,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {row[c]||<span style={{color:'#CBD5E1'}}>—</span>}
-                    </td>)}
+                  <tr key={i} style={{borderTop:`1px solid ${TBORDER}`,
+                    background:i%2===0?CARD:'#FAFBFF'}}>
+                    {previewCols.map(c=>(
+                      <td key={c} style={{...TD,padding:'7px 10px',maxWidth:150,
+                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {row[c]||<span style={{color:'#CBD5E1'}}>—</span>}
+                      </td>
+                    ))}
                   </tr>
                 ))}
                 {preview.mapped.length>10&&(
-                  <tr><td colSpan={previewCols.length} style={{...TD,color:TXT2,padding:'8px 10px'}}>
-                    ...and {preview.mapped.length-10} more rows
-                  </td></tr>
+                  <tr>
+                    <td colSpan={previewCols.length}
+                      style={{...TD,color:TXT2,padding:'8px 10px',fontStyle:'italic',
+                        textAlign:'center'}}>
+                      … and {preview.mapped.length-10} more rows
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Mode selector */}
+          {/* Import mode */}
           <div style={{display:'flex',gap:10,marginBottom:16}}>
-            {[['add','Add to existing list'],['replace','Replace entire month list']].map(([m,label])=>(
-              <label key={m} onClick={()=>setMode(m)} style={{display:'flex',alignItems:'center',gap:8,
-                cursor:'pointer',padding:'8px 14px',borderRadius:9,
-                border:`1.5px solid ${mode===m?'#6366f1':BORDER}`,
-                background:mode===m?'#EEEEFF':INBG}}>
-                <div style={{width:14,height:14,borderRadius:'50%',
+            {[['add','Add to existing list'],['replace','Replace this month\'s list']].map(([m,label])=>(
+              <label key={m} onClick={()=>setMode(m)}
+                style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',
+                  padding:'10px 14px',borderRadius:9,flex:1,
+                  border:`1.5px solid ${mode===m?'#6366f1':BORDER}`,
+                  background:mode===m?'#EEEEFF':INBG}}>
+                <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
                   border:`2px solid ${mode===m?'#6366f1':'#CBD5E1'}`,
                   background:mode===m?'#6366f1':'transparent',
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {mode===m&&<div style={{width:5,height:5,borderRadius:'50%',background:'white'}}/>}
                 </div>
-                <span style={{fontSize:12,fontWeight:mode===m?600:400,color:mode===m?'#6366f1':TXT}}>{label}</span>
+                <span style={{fontSize:12,fontWeight:mode===m?600:400,
+                  color:mode===m?'#6366f1':TXT}}>{label}</span>
               </label>
             ))}
           </div>
 
           <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
-            <GhostBtn onClick={()=>setPreview(null)}>Back</GhostBtn>
             <GhostBtn onClick={onClose}>Cancel</GhostBtn>
             <PBtn onClick={()=>onImport(preview.mapped,mode)}>
               Import {preview.mapped.length} rows
@@ -2107,8 +2190,8 @@ function ImportModal({type,onClose,onImport}){
         </>
       )}
 
-      {!preview&&(
-        <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8}}>
+      {!preview&&!loading&&!error&&(
+        <div style={{display:'flex',justifyContent:'flex-end',marginTop:4}}>
           <GhostBtn onClick={onClose}>Cancel</GhostBtn>
         </div>
       )}
@@ -2116,6 +2199,7 @@ function ImportModal({type,onClose,onImport}){
   );
 }
 
+// placeholder comment
 function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals}){
   const now=new Date();
   const curMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
