@@ -254,14 +254,14 @@ export default function App() {
   const login  = ()=>{ localStorage.setItem('mkt_auth','true'); setAuthed(true); };
   const logout = ()=>{ localStorage.removeItem('mkt_auth'); setAuthed(false); setReady(false); };
 
-  // Prevent browser from navigating to dropped files
+  // Prevent browser from navigating to dropped files (capture phase runs before browser default)
   useEffect(()=>{
-    const stop=e=>{e.preventDefault();e.stopPropagation();};
-    document.addEventListener('dragover',stop);
-    document.addEventListener('drop',stop);
+    const stop=e=>e.preventDefault();
+    document.addEventListener('dragover',stop,true);
+    document.addEventListener('drop',stop,true);
     return ()=>{
-      document.removeEventListener('dragover',stop);
-      document.removeEventListener('drop',stop);
+      document.removeEventListener('dragover',stop,true);
+      document.removeEventListener('drop',stop,true);
     };
   },[]);
 
@@ -989,9 +989,9 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
         <label style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,
           padding:'18px',borderRadius:10,border:`2px dashed ${BORDER}`,cursor:'pointer',
           background:'#FAFBFF',transition:'background 0.15s'}}
-          onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.background='#EEEEFF';}}
+          onDragOver={e=>{e.preventDefault();e.currentTarget.style.background='#EEEEFF';}}
           onDragLeave={e=>{e.currentTarget.style.background='#FAFBFF';}}
-          onDrop={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.background='#FAFBFF';
+          onDrop={e=>{e.preventDefault();e.currentTarget.style.background='#FAFBFF';
             const files=Array.from(e.dataTransfer.files);
             files.forEach(file=>{
               if(!file.type.startsWith('image/')) return;
