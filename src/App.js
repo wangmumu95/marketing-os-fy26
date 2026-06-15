@@ -1128,15 +1128,15 @@ function CalendarPage({team,tasks}) {
                   const c=getTaskColor(t);
                   const done=t.status==='Done';
                   const od=t.status!=='Done'&&key<todayKey;
+                  const bgColor=od?'#ef4444':done?'#10b981':c;
                   return (
                     <div key={t.id} style={{
-                      background:od?'#FEE9E9':done?'#F0FDF4':c+'18',
-                      color:od?'#dc2626':done?'#10b981':c,
-                      fontSize:10,fontWeight:500,padding:'2px 6px',
+                      background:bgColor,
+                      color:'white',
+                      fontSize:10,fontWeight:600,padding:'2px 7px',
                       borderRadius:5,marginBottom:2,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                      borderLeft:`2.5px solid ${od?'#dc2626':done?'#10b981':c}`,
-                      textDecoration:done?'line-through':'none'}}>
+                      opacity:done?0.6:1}}>
                       {t.title}
                     </div>
                   );
