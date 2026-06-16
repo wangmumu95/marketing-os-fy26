@@ -363,7 +363,7 @@ export default function App() {
     {id:'tasks',     icon:'ti-layout-kanban',    label:'Tasks'},
     {id:'calendar',  icon:'ti-calendar',         label:'Calendar'},
     {id:'kpis',      icon:'ti-target',           label:'KPIs'},
-    {id:'finance',   icon:'ti-report-money',     label:'Finance'},
+    {id:'finance',   icon:'ti-report-money',     label:'Expenses'},
     {id:'conversion',icon:'ti-arrows-exchange',  label:'Conversion'},
     {id:'settings',  icon:'ti-settings',         label:'Settings'},
   ];
