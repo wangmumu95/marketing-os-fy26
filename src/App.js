@@ -137,12 +137,15 @@ const compressImage=(dataUrl,maxPx=800,quality=0.7)=>new Promise(resolve=>{
 });
 
 const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c}));
-const sv = async(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){
-  if(e.name==='QuotaExceededError'||e.code===22){
-    alert('Storage full — try removing some images from tasks to free up space.');
-  }
-} };
-const ld = async(k,fb)=>{ try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r)}catch{} return fb; };
+
+// ── Supabase (shared across all computers) ────────────────────────────────
+import { createClient } from '@supabase/supabase-js';
+const _sb = createClient(
+  'https://jnxaheayzoxmhmydbeqd.supabase.co',
+  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueGFoZWF5em94bWhteWRiZXFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTkwMzQsImV4cCI6MjA5NjA5NTAzNH0.P_7OmeMxn10FtQhYzlnBfl2sJkjotOf8f-nGVGLXa8A
+);
+const sv = async(k,v)=>{ try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv',e);} };
+const ld = async(k,fb)=>{ try{ const {data}=await _sb.from('mkt_store').select('value').eq('key',k).single(); if(data)return JSON.parse(data.value); }catch{} return fb; };
 
 /* ── Shared UI ─────────────────────────────────────────────────────────────── */
 const Avatar = ({name,color,size=28}) => (
