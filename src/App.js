@@ -1890,7 +1890,7 @@ function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
   return (
     <Modal title={event?'Edit event':'New event'} onClose={onClose}>
       <Lbl s="Event title">
-        <Inp value={f.title} onChange={e=>s('title',e.target.value)} placeholder="e.g. Product shoot, Geraldine on leave"/>
+        <Inp value={f.title} onChange={e=>s('title',e.target.value)} placeholder="e.g. Product shoot, Team activation at Toa Payoh"/>
       </Lbl>
       <Lbl s="Event type">
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
