@@ -3007,7 +3007,49 @@ function CoePage(){
 function SettingsPage({team,saveTeam,fy,setFy}) {
   const [lt,setLt]=useState(()=>team.map(m=>({...m})));
   const [saved,setSaved]=useState(false);
+  const [syncMsg,setSyncMsg]=useState('');
+  const [syncing,setSyncing]=useState(false);
+
   const save=()=>{saveTeam(lt);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+
+  const KEYS=['mkt_team','mkt_tasks','mkt_kpis','mkt_exp','mkt_leads','mkt_budgets',
+               'mkt_events','mkt_lead_recs','mkt_closed_deals'];
+
+  // Push everything from localStorage → Supabase
+  const pushToCloud=async()=>{
+    setSyncing(true);setSyncMsg('');
+    let pushed=0;
+    for(const k of KEYS){
+      try{
+        const r=localStorage.getItem(k);
+        if(r!==null){
+          await _sb.from('mkt_store').upsert({key:k,value:r});
+          pushed++;
+        }
+      }catch(e){console.warn(k,e);}
+    }
+    setSyncing(false);
+    setSyncMsg(`✓ Pushed ${pushed} data sets from this browser to the cloud. Other computers will now see this data.`);
+  };
+
+  // Pull everything from Supabase → localStorage, then reload
+  const pullFromCloud=async()=>{
+    setSyncing(true);setSyncMsg('');
+    let pulled=0;
+    for(const k of KEYS){
+      try{
+        const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+        if(data&&!error){
+          localStorage.setItem(k,data.value);
+          pulled++;
+        }
+      }catch(e){console.warn(k,e);}
+    }
+    setSyncing(false);
+    setSyncMsg(`✓ Pulled ${pulled} data sets from cloud. Reloading…`);
+    setTimeout(()=>window.location.reload(),1200);
+  };
+
   return (
     <div>
       <PageHeader title="Settings"/>
@@ -3029,7 +3071,8 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
           ))}
         </div>
       </Card>
-      <Card style={{padding:'20px 24px',marginBottom:20}}>
+
+      <Card style={{padding:'20px 24px',marginBottom:16}}>
         <h3 style={{margin:'0 0 6px',fontSize:15,fontWeight:700,color:TXT}}>Fiscal year</h3>
         <p style={{margin:'0 0 14px',fontSize:13,color:TXT2}}>Data is grouped by the selected fiscal year.</p>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -3039,6 +3082,43 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
           <span style={{fontSize:13,color:TXT2,background:'#EEF1F9',padding:'6px 14px',borderRadius:99,fontWeight:500}}>Apr {fy} – Mar {fy+1}</span>
         </div>
       </Card>
+
+      {/* Data sync */}
+      <Card style={{padding:'20px 24px',marginBottom:20}}>
+        <h3 style={{margin:'0 0 6px',fontSize:15,fontWeight:700,color:TXT}}>Data sync</h3>
+        <p style={{margin:'0 0 18px',fontSize:13,color:TXT2}}>
+          Use these buttons if your data looks out of date. Each computer keeps its own local copy — use <strong>Push to cloud</strong> on the computer with the correct latest data, then <strong>Pull from cloud</strong> on other computers.
+        </p>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          <button onClick={pushToCloud} disabled={syncing}
+            style={{background:'#6366f1',color:'white',border:'none',cursor:syncing?'not-allowed':'pointer',
+              padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+              display:'flex',alignItems:'center',gap:6,opacity:syncing?0.7:1}}>
+            <i className="ti ti-cloud-upload" style={{fontSize:14}}/>
+            Push this computer's data → cloud
+          </button>
+          <button onClick={pullFromCloud} disabled={syncing}
+            style={{background:'#0891b2',color:'white',border:'none',cursor:syncing?'not-allowed':'pointer',
+              padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+              display:'flex',alignItems:'center',gap:6,opacity:syncing?0.7:1}}>
+            <i className="ti ti-cloud-download" style={{fontSize:14}}/>
+            Pull cloud data → this computer
+          </button>
+        </div>
+        {syncing&&(
+          <p style={{margin:'12px 0 0',fontSize:12,color:TXT2}}>
+            <i className="ti ti-loader-2" style={{marginRight:5}}/>Syncing…
+          </p>
+        )}
+        {syncMsg&&(
+          <div style={{marginTop:12,padding:'10px 14px',borderRadius:10,
+            background:'#E0F7EF',border:'1px solid #BBF7D0',
+            fontSize:12,color:'#047857',fontWeight:500}}>
+            {syncMsg}
+          </div>
+        )}
+      </Card>
+
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <PBtn onClick={save}>Save changes</PBtn>
         {saved&&<span style={{fontSize:13,color:'#10b981',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
