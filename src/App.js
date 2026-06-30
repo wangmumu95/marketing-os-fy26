@@ -3015,6 +3015,36 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
   const KEYS=['mkt_team','mkt_tasks','mkt_kpis','mkt_exp','mkt_leads','mkt_budgets',
                'mkt_events','mkt_lead_recs','mkt_closed_deals'];
 
+  const [inspect,setInspect]=useState(null);
+
+  const runInspect=async()=>{
+    const results=[];
+    for(const k of KEYS){
+      const local=localStorage.getItem(k);
+      let localCount='empty';
+      if(local){
+        try{
+          const p=JSON.parse(local);
+          if(Array.isArray(p)) localCount=`${p.length} items`;
+          else if(typeof p==='object'&&p!==null) localCount=`${Object.keys(p).length} keys`;
+          else localCount='has data';
+        }catch{localCount='unreadable';}
+      }
+      let cloudCount='empty';
+      try{
+        const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+        if(data&&!error){
+          const p=JSON.parse(data.value);
+          if(Array.isArray(p)) cloudCount=`${p.length} items`;
+          else if(typeof p==='object'&&p!==null) cloudCount=`${Object.keys(p).length} keys`;
+          else cloudCount='has data';
+        }
+      }catch{}
+      results.push({k,localCount,cloudCount});
+    }
+    setInspect(results);
+  };
+
   // Push everything from localStorage → Supabase
   const pushToCloud=async()=>{
     setSyncing(true);setSyncMsg('');
@@ -3117,6 +3147,57 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
             {syncMsg}
           </div>
         )}
+
+        {/* Inspector */}
+        <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${TBORDER}`}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <span style={{fontSize:13,fontWeight:600,color:TXT}}>Data inspector</span>
+            <button onClick={runInspect} disabled={syncing}
+              style={{background:'#F7F8FD',color:TXT2,border:`1px solid ${BORDER}`,
+                cursor:'pointer',padding:'5px 12px',borderRadius:8,fontSize:12,
+                fontWeight:600,fontFamily:F}}>
+              <i className="ti ti-search" style={{fontSize:11,marginRight:4}}/>
+              Check what's stored
+            </button>
+          </div>
+          {inspect&&(
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead>
+                <tr style={{borderBottom:`1px solid ${TBORDER}`}}>
+                  <th style={{...TH,textAlign:'left',padding:'6px 8px'}}>Data</th>
+                  <th style={{...TH,padding:'6px 8px',color:'#6366f1'}}>This browser</th>
+                  <th style={{...TH,padding:'6px 8px',color:'#0891b2'}}>Cloud (Supabase)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inspect.map(({k,localCount,cloudCount})=>{
+                  const label=k.replace('mkt_','').replace(/_/g,' ');
+                  const localHas=localCount!=='empty';
+                  const cloudHas=cloudCount!=='empty';
+                  return (
+                    <tr key={k} style={{borderBottom:`1px solid ${TBORDER}`}}>
+                      <td style={{padding:'6px 8px',color:TXT,fontWeight:500,
+                        textTransform:'capitalize'}}>{label}</td>
+                      <td style={{padding:'6px 8px',textAlign:'center',
+                        color:localHas?'#6366f1':TXT2,fontWeight:localHas?600:400}}>
+                        {localHas?localCount:'—'}
+                      </td>
+                      <td style={{padding:'6px 8px',textAlign:'center',
+                        color:cloudHas?'#0891b2':TXT2,fontWeight:cloudHas?600:400}}>
+                        {cloudHas?cloudCount:'—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          {inspect&&(
+            <p style={{fontSize:11,color:TXT2,margin:'10px 0 0'}}>
+              The source with more items has your latest data. Use Push/Pull above to sync.
+            </p>
+          )}
+        </div>
       </Card>
 
       <div style={{display:'flex',alignItems:'center',gap:12}}>
