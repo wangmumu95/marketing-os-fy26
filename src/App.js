@@ -145,26 +145,21 @@ const _sb = createClient(
   'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
 );
 const sv = async(k,v)=>{
-  // Save to both so data is always current everywhere
-  try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv:supabase',e);}
-  try{ localStorage.setItem(k,JSON.stringify(v)); }catch{}
+  const str=JSON.stringify(v);
+  try{ await _sb.from('mkt_store').upsert({key:k,value:str}); }catch(e){console.warn('sv',e);}
+  try{ localStorage.setItem(k,str); }catch{}
 };
 const ld = async(k,fb)=>{
-  // localStorage first — this machine always has the most recent data
-  try{
-    const r=localStorage.getItem(k);
-    if(r!==null){
-      const parsed=JSON.parse(r);
-      // Push latest data up to Supabase so other computers get it
-      try{ _sb.from('mkt_store').upsert({key:k,value:r}); }catch{}
-      return parsed;
-    }
-  }catch{}
-  // No localStorage — try Supabase (other computers, fresh installs)
+  // Supabase is the source of truth for team data
   try{
     const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
-    if(data&&!error) return JSON.parse(data.value);
-  }catch{}
+    if(data&&!error){
+      try{localStorage.setItem(k,data.value);}catch{}
+      return JSON.parse(data.value);
+    }
+  }catch(e){console.warn('ld:cloud',e);}
+  // Fall back to localStorage if Supabase unavailable
+  try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r);}catch{}
   return fb;
 };
 
@@ -3014,35 +3009,70 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
 
   const KEYS=['mkt_team','mkt_tasks','mkt_kpis','mkt_exp','mkt_leads','mkt_budgets',
                'mkt_events','mkt_lead_recs','mkt_closed_deals'];
-
   const [inspect,setInspect]=useState(null);
+  const [syncing,setSyncing]=useState(false);
+  const [syncMsg,setSyncMsg]=useState('');
+
+  // Smart merge: combines local + cloud arrays by ID, keeping all unique items
+  const smartMergePush=async()=>{
+    setSyncing(true);setSyncMsg('');
+    let merged=0;
+    for(const k of KEYS){
+      const localStr=localStorage.getItem(k);
+      if(!localStr) continue;
+      try{
+        const localData=JSON.parse(localStr);
+        // Get cloud data
+        let cloudData=null;
+        try{
+          const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+          if(data&&!error) cloudData=JSON.parse(data.value);
+        }catch{}
+        let toSave=localData;
+        // If both are arrays, merge by ID so nothing is lost
+        if(Array.isArray(localData)&&Array.isArray(cloudData)){
+          const map={};
+          [...cloudData,...localData].forEach(item=>{if(item.id)map[item.id]=item;});
+          toSave=Object.values(map);
+        }
+        await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(toSave)});
+        localStorage.setItem(k,JSON.stringify(toSave));
+        merged++;
+      }catch(e){console.warn(k,e);}
+    }
+    setSyncing(false);
+    setSyncMsg(`✓ Merged data from this computer with cloud — ${merged} data stores updated. Ask all team members to do the same, then reload.`);
+  };
+
+  const pullFromCloud=async()=>{
+    setSyncing(true);setSyncMsg('');
+    let pulled=0;
+    for(const k of KEYS){
+      try{
+        const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+        if(data&&!error){localStorage.setItem(k,data.value);pulled++;}
+      }catch(e){console.warn(k,e);}
+    }
+    setSyncing(false);
+    setSyncMsg(`✓ Pulled ${pulled} data stores from cloud. Reloading…`);
+    setTimeout(()=>window.location.reload(),1200);
+  };
 
   const runInspect=async()=>{
+    setSyncing(true);
     const results=[];
     for(const k of KEYS){
       const local=localStorage.getItem(k);
-      let localCount='empty';
-      if(local){
-        try{
-          const p=JSON.parse(local);
-          if(Array.isArray(p)) localCount=`${p.length} items`;
-          else if(typeof p==='object'&&p!==null) localCount=`${Object.keys(p).length} keys`;
-          else localCount='has data';
-        }catch{localCount='unreadable';}
-      }
-      let cloudCount='empty';
+      let localCount='—';
+      if(local){try{const p=JSON.parse(local);localCount=Array.isArray(p)?`${p.length} items`:`${Object.keys(p).length} keys`;}catch{localCount='unreadable';}}
+      let cloudCount='—';
       try{
         const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
-        if(data&&!error){
-          const p=JSON.parse(data.value);
-          if(Array.isArray(p)) cloudCount=`${p.length} items`;
-          else if(typeof p==='object'&&p!==null) cloudCount=`${Object.keys(p).length} keys`;
-          else cloudCount='has data';
-        }
+        if(data&&!error){const p=JSON.parse(data.value);cloudCount=Array.isArray(p)?`${p.length} items`:`${Object.keys(p).length} keys`;}
       }catch{}
       results.push({k,localCount,cloudCount});
     }
-    setInspect(results);
+    setInspect(results);setSyncing(false);
   };
 
   // Push everything from localStorage → Supabase
@@ -3113,91 +3143,74 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
         </div>
       </Card>
 
-      {/* Data sync */}
-      <Card style={{padding:'20px 24px',marginBottom:20}}>
-        <h3 style={{margin:'0 0 6px',fontSize:15,fontWeight:700,color:TXT}}>Data sync</h3>
-        <p style={{margin:'0 0 18px',fontSize:13,color:TXT2}}>
-          Use these buttons if your data looks out of date. Each computer keeps its own local copy — use <strong>Push to cloud</strong> on the computer with the correct latest data, then <strong>Pull from cloud</strong> on other computers.
-        </p>
-        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-          <button onClick={pushToCloud} disabled={syncing}
-            style={{background:'#6366f1',color:'white',border:'none',cursor:syncing?'not-allowed':'pointer',
-              padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
-              display:'flex',alignItems:'center',gap:6,opacity:syncing?0.7:1}}>
+      <Card style={{padding:'20px 24px',marginBottom:16}}>
+        <h3 style={{margin:'0 0 6px',fontSize:15,fontWeight:700,color:TXT}}>Data sync & recovery</h3>
+        <div style={{background:'#FEF4DC',border:'1px solid #FCD34D',borderRadius:10,
+          padding:'10px 14px',marginBottom:16,fontSize:12,color:'#92400e'}}>
+          <strong>Recovery steps if data is missing:</strong> On each team member's computer, click <em>Merge this computer → cloud</em>. Once everyone has done this, click <em>Pull latest from cloud</em> and reload. This combines all individual computers' data into one shared set.
+        </div>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12}}>
+          <button onClick={smartMergePush} disabled={syncing}
+            style={{background:'#6366f1',color:'white',border:'none',
+              cursor:syncing?'not-allowed':'pointer',opacity:syncing?0.7:1,
+              padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+              display:'flex',alignItems:'center',gap:6}}>
             <i className="ti ti-cloud-upload" style={{fontSize:14}}/>
-            Push this computer's data → cloud
+            Merge this computer → cloud
           </button>
           <button onClick={pullFromCloud} disabled={syncing}
-            style={{background:'#0891b2',color:'white',border:'none',cursor:syncing?'not-allowed':'pointer',
-              padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
-              display:'flex',alignItems:'center',gap:6,opacity:syncing?0.7:1}}>
+            style={{background:'#0891b2',color:'white',border:'none',
+              cursor:syncing?'not-allowed':'pointer',opacity:syncing?0.7:1,
+              padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+              display:'flex',alignItems:'center',gap:6}}>
             <i className="ti ti-cloud-download" style={{fontSize:14}}/>
-            Pull cloud data → this computer
+            Pull latest from cloud
+          </button>
+          <button onClick={runInspect} disabled={syncing}
+            style={{background:'#F7F8FD',color:TXT2,border:`1px solid ${BORDER}`,
+              cursor:syncing?'not-allowed':'pointer',opacity:syncing?0.7:1,
+              padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+              display:'flex',alignItems:'center',gap:6}}>
+            <i className="ti ti-search" style={{fontSize:14}}/>
+            Inspect data counts
           </button>
         </div>
-        {syncing&&(
-          <p style={{margin:'12px 0 0',fontSize:12,color:TXT2}}>
-            <i className="ti ti-loader-2" style={{marginRight:5}}/>Syncing…
-          </p>
-        )}
+
+        {syncing&&<p style={{fontSize:12,color:TXT2,margin:'0 0 8px'}}>Working…</p>}
+
         {syncMsg&&(
-          <div style={{marginTop:12,padding:'10px 14px',borderRadius:10,
-            background:'#E0F7EF',border:'1px solid #BBF7D0',
-            fontSize:12,color:'#047857',fontWeight:500}}>
+          <div style={{padding:'10px 14px',borderRadius:10,background:'#E0F7EF',
+            border:'1px solid #BBF7D0',fontSize:12,color:'#047857',fontWeight:500,marginBottom:12}}>
             {syncMsg}
           </div>
         )}
 
-        {/* Inspector */}
-        <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${TBORDER}`}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <span style={{fontSize:13,fontWeight:600,color:TXT}}>Data inspector</span>
-            <button onClick={runInspect} disabled={syncing}
-              style={{background:'#F7F8FD',color:TXT2,border:`1px solid ${BORDER}`,
-                cursor:'pointer',padding:'5px 12px',borderRadius:8,fontSize:12,
-                fontWeight:600,fontFamily:F}}>
-              <i className="ti ti-search" style={{fontSize:11,marginRight:4}}/>
-              Check what's stored
-            </button>
-          </div>
-          {inspect&&(
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-              <thead>
-                <tr style={{borderBottom:`1px solid ${TBORDER}`}}>
-                  <th style={{...TH,textAlign:'left',padding:'6px 8px'}}>Data</th>
-                  <th style={{...TH,padding:'6px 8px',color:'#6366f1'}}>This browser</th>
-                  <th style={{...TH,padding:'6px 8px',color:'#0891b2'}}>Cloud (Supabase)</th>
+        {inspect&&(
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,marginTop:8}}>
+            <thead>
+              <tr style={{borderBottom:`1px solid ${TBORDER}`}}>
+                <th style={{...TH,textAlign:'left',padding:'6px 8px'}}>Data store</th>
+                <th style={{...TH,padding:'6px 8px',color:'#6366f1'}}>This browser</th>
+                <th style={{...TH,padding:'6px 8px',color:'#0891b2'}}>Cloud</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inspect.map(({k,localCount,cloudCount})=>(
+                <tr key={k} style={{borderBottom:`1px solid ${TBORDER}`}}>
+                  <td style={{padding:'6px 8px',color:TXT,fontWeight:500,
+                    textTransform:'capitalize'}}>{k.replace('mkt_','').replace(/_/g,' ')}</td>
+                  <td style={{padding:'6px 8px',textAlign:'center',
+                    color:localCount!=='—'?'#6366f1':TXT2,
+                    fontWeight:localCount!=='—'?600:400}}>{localCount}</td>
+                  <td style={{padding:'6px 8px',textAlign:'center',
+                    color:cloudCount!=='—'?'#0891b2':TXT2,
+                    fontWeight:cloudCount!=='—'?600:400}}>{cloudCount}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {inspect.map(({k,localCount,cloudCount})=>{
-                  const label=k.replace('mkt_','').replace(/_/g,' ');
-                  const localHas=localCount!=='empty';
-                  const cloudHas=cloudCount!=='empty';
-                  return (
-                    <tr key={k} style={{borderBottom:`1px solid ${TBORDER}`}}>
-                      <td style={{padding:'6px 8px',color:TXT,fontWeight:500,
-                        textTransform:'capitalize'}}>{label}</td>
-                      <td style={{padding:'6px 8px',textAlign:'center',
-                        color:localHas?'#6366f1':TXT2,fontWeight:localHas?600:400}}>
-                        {localHas?localCount:'—'}
-                      </td>
-                      <td style={{padding:'6px 8px',textAlign:'center',
-                        color:cloudHas?'#0891b2':TXT2,fontWeight:cloudHas?600:400}}>
-                        {cloudHas?cloudCount:'—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-          {inspect&&(
-            <p style={{fontSize:11,color:TXT2,margin:'10px 0 0'}}>
-              The source with more items has your latest data. Use Push/Pull above to sync.
-            </p>
-          )}
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
       </Card>
 
       <div style={{display:'flex',alignItems:'center',gap:12}}>
