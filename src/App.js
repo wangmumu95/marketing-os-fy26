@@ -145,25 +145,25 @@ const _sb = createClient(
   'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
 );
 const sv = async(k,v)=>{
-  // Save to Supabase (shared) + localStorage (backup)
+  // Save to both so data is always current everywhere
   try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv:supabase',e);}
   try{ localStorage.setItem(k,JSON.stringify(v)); }catch{}
 };
 const ld = async(k,fb)=>{
-  // Try Supabase first
-  try{
-    const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
-    if(data&&!error) return JSON.parse(data.value);
-  }catch{}
-  // Fall back to localStorage (recovers old data on original computer)
+  // localStorage first — this machine always has the most recent data
   try{
     const r=localStorage.getItem(k);
     if(r!==null){
       const parsed=JSON.parse(r);
-      // Migrate to Supabase so other computers can see it
-      try{ await _sb.from('mkt_store').upsert({key:k,value:r}); }catch{}
+      // Push latest data up to Supabase so other computers get it
+      try{ _sb.from('mkt_store').upsert({key:k,value:r}); }catch{}
       return parsed;
     }
+  }catch{}
+  // No localStorage — try Supabase (other computers, fresh installs)
+  try{
+    const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+    if(data&&!error) return JSON.parse(data.value);
   }catch{}
   return fb;
 };
