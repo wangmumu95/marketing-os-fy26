@@ -146,20 +146,20 @@ const _sb = createClient(
 );
 const sv = async(k,v)=>{
   const str=JSON.stringify(v);
-  try{ await _sb.from('mkt_store').upsert({key:k,value:str}); }catch(e){console.warn('sv',e);}
   try{ localStorage.setItem(k,str); }catch{}
+  try{ await _sb.from('mkt_store').upsert({key:k,value:str}); }catch(e){console.warn('sv',e);}
 };
 const ld = async(k,fb)=>{
-  // Supabase is the source of truth for team data
+  // localStorage is always the freshest data on this machine — never overwrite it
+  try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r);}catch{}
+  // Only fall back to Supabase if localStorage has nothing (fresh device/browser)
   try{
     const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
     if(data&&!error){
       try{localStorage.setItem(k,data.value);}catch{}
       return JSON.parse(data.value);
     }
-  }catch(e){console.warn('ld:cloud',e);}
-  // Fall back to localStorage if Supabase unavailable
-  try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r);}catch{}
+  }catch(e){console.warn('ld',e);}
   return fb;
 };
 
