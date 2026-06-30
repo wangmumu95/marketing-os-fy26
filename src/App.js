@@ -3074,40 +3074,6 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
   };
 
   // Push everything from localStorage → Supabase
-  const pushToCloud=async()=>{
-    setSyncing(true);setSyncMsg('');
-    let pushed=0;
-    for(const k of KEYS){
-      try{
-        const r=localStorage.getItem(k);
-        if(r!==null){
-          await _sb.from('mkt_store').upsert({key:k,value:r});
-          pushed++;
-        }
-      }catch(e){console.warn(k,e);}
-    }
-    setSyncing(false);
-    setSyncMsg(`✓ Pushed ${pushed} data sets from this browser to the cloud. Other computers will now see this data.`);
-  };
-
-  // Pull everything from Supabase → localStorage, then reload
-  const pullFromCloud=async()=>{
-    setSyncing(true);setSyncMsg('');
-    let pulled=0;
-    for(const k of KEYS){
-      try{
-        const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
-        if(data&&!error){
-          localStorage.setItem(k,data.value);
-          pulled++;
-        }
-      }catch(e){console.warn(k,e);}
-    }
-    setSyncing(false);
-    setSyncMsg(`✓ Pulled ${pulled} data sets from cloud. Reloading…`);
-    setTimeout(()=>window.location.reload(),1200);
-  };
-
   return (
     <div>
       <PageHeader title="Settings"/>
