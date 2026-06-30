@@ -142,7 +142,7 @@ const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c})
 // ── Supabase (shared across all computers) ────────────────────────────────
 const _sb = createClient(
   'https://jnxaheayzoxmhmydbeqd.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueGFoZWF5em94bWhteWRiZXFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTkwMzQsImV4cCI6MjA5NjA5NTAzNH0.P_7OmeMxn10FtQhYzlnBfl2sJkjotOf8f-nGVGLXa8A'
+  'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
 );
 const sv = async(k,v)=>{ try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv',e);} };
 const ld = async(k,fb)=>{ try{ const {data}=await _sb.from('mkt_store').select('value').eq('key',k).single(); if(data)return JSON.parse(data.value); }catch{} return fb; };
@@ -368,6 +368,7 @@ export default function App() {
     {id:'kpis',      icon:'ti-target',           label:'KPIs'},
     {id:'finance',   icon:'ti-report-money',     label:'Expenses'},
     {id:'conversion',icon:'ti-arrows-exchange',  label:'Conversion'},
+    {id:'coe',       icon:'ti-car',              label:'COE'},
     {id:'settings',  icon:'ti-settings',         label:'Settings'},
   ];
 
@@ -458,6 +459,7 @@ export default function App() {
         {page==='kpis'&&      <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
         {page==='finance'&&   <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
         {page==='conversion'&&<ConversionPage leadRecords={leadRecords} saveLeadRecords={svLeadRecs} closedDeals={closedDeals} saveClosedDeals={svClosedDeals}/>}
+        {page==='coe'&&       <CoePage/>}
         {page==='settings'&&  <SettingsPage team={team} saveTeam={svTeam} fy={fy} setFy={setFy}/>}
       </div>
     </div>
@@ -2738,6 +2740,245 @@ function DealModal({deal,onClose,onSave,onDelete}){
         <div style={{display:'flex',gap:8}}><GhostBtn onClick={onClose}>Cancel</GhostBtn><PBtn onClick={()=>(f.name||f.contractNo)&&onSave(f)}>Save customer</PBtn></div>
       </div>
     </Modal>
+  );
+}
+
+/* ── COE Tracker ────────────────────────────────────────────────────────────── */
+const COE_CATS=[
+  {key:'Category A',short:'Cat A',label:'Cars ≤1600cc / EV ≤110kW',color:'#6366f1'},
+  {key:'Category B',short:'Cat B',label:'Cars >1600cc / EV >110kW', color:'#0891b2'},
+  {key:'Category C',short:'Cat C',label:'Goods vehicles & buses',   color:'#10b981'},
+  {key:'Category D',short:'Cat D',label:'Motorcycles',              color:'#f59e0b'},
+  {key:'Category E',short:'Cat E',label:'Open category',            color:'#ef4444'},
+];
+
+function CoePage(){
+  const [rows,setRows]   =useState([]);
+  const [loading,setLoad]=useState(true);
+  const [error,setError] =useState('');
+  const [vis,setVis]     =useState(new Set(['Category A','Category B','Category C','Category E']));
+  const [view,setView]   =useState('chart');
+
+  useEffect(()=>{
+    fetch('https://data.gov.sg/api/action/datastore_search?resource_id=d_69b3380ad7e51aff3a7dcc84eba52b8a&limit=500&sort=month%20desc')
+      .then(r=>r.json())
+      .then(j=>{
+        const records=j.result.records;
+        // Group by month+cat, average the two bidding exercises
+        const byMC={};
+        records.forEach(r=>{
+          const k=r.month+'|'+r.vehicle_class;
+          const qp=parseFloat(r.premium);
+          if(!r.month||!r.vehicle_class||isNaN(qp)) return;
+          if(!byMC[k]) byMC[k]={month:r.month,cat:r.vehicle_class,vals:[]};
+          byMC[k].vals.push(qp);
+        });
+        // Build month rows
+        const monthSet=new Set(Object.values(byMC).map(x=>x.month));
+        const sorted=[...monthSet].sort().slice(-13);
+        const processed=sorted.map(m=>{
+          const row={month:m};
+          COE_CATS.forEach(c=>{
+            const k=m+'|'+c.key;
+            const entry=byMC[k];
+            row[c.key]=entry?Math.round(entry.vals.reduce((a,b)=>a+b,0)/entry.vals.length):null;
+          });
+          return row;
+        });
+        setRows(processed);setLoad(false);
+      })
+      .catch(e=>{setError(e.message);setLoad(false);});
+  },[]);
+
+  const toggle=cat=>{
+    setVis(prev=>{const n=new Set(prev);n.has(cat)?n.delete(cat):n.add(cat);return n;});
+  };
+
+  const fmt=n=>n==null?'—':'$'+n.toLocaleString();
+  const diff=(a,b)=>a==null||b==null?null:a-b;
+
+  const activeCats=COE_CATS.filter(c=>vis.has(c.key));
+  const latest=rows[rows.length-1];
+  const prev=rows[rows.length-2];
+
+  // recharts data (last 12 months)
+  const chartData=rows.slice(-12).map(r=>({
+    name:fmtMK(r.month),
+    ...Object.fromEntries(COE_CATS.map(c=>[c.short,r[c.key]])),
+  }));
+
+  return (
+    <div>
+      <PageHeader title="COE Results" sub="Live from LTA via data.gov.sg · both bidding exercises averaged"/>
+
+      {/* Category toggles */}
+      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+        {COE_CATS.map(c=>{
+          const on=vis.has(c.key);
+          return (
+            <button key={c.key} onClick={()=>toggle(c.key)} style={{
+              padding:'6px 14px',fontSize:12,fontWeight:on?700:500,fontFamily:F,
+              border:`1.5px solid ${on?c.color:BORDER}`,borderRadius:99,cursor:'pointer',
+              background:on?c.color+'18':'transparent',color:on?c.color:TXT2,
+              transition:'all 0.15s'}}>
+              {c.short}
+              <span style={{fontSize:10,marginLeft:5,opacity:0.7}}>{c.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {loading&&(
+        <Card style={{padding:'48px',textAlign:'center'}}>
+          <i className="ti ti-loader-2" style={{fontSize:28,color:TXT2,display:'block',marginBottom:8}} aria-hidden/>
+          <p style={{color:TXT2,fontSize:14,margin:0}}>Loading COE data from LTA…</p>
+        </Card>
+      )}
+
+      {error&&(
+        <Card style={{padding:'32px',textAlign:'center',border:'1px solid #FECACA',background:'#FEF2F2'}}>
+          <p style={{color:'#dc2626',fontSize:14,margin:0}}>⚠ Could not load COE data: {error}</p>
+        </Card>
+      )}
+
+      {!loading&&!error&&rows.length>0&&(
+        <>
+          {/* Summary cards — latest premiums */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:20}}>
+            {activeCats.map(c=>{
+              const curr=latest?.[c.key];
+              const d=diff(curr,prev?.[c.key]);
+              return (
+                <Card key={c.key} style={{padding:'14px 16px',borderTop:`3px solid ${c.color}`}}>
+                  <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,
+                    textTransform:'uppercase',letterSpacing:'0.04em'}}>{c.short}</div>
+                  <div style={{fontSize:20,fontWeight:700,color:TXT}}>{fmt(curr)}</div>
+                  {d!=null&&(
+                    <div style={{fontSize:11,marginTop:4,fontWeight:600,
+                      color:d>0?'#ef4444':'#10b981'}}>
+                      {d>0?'▲':'▼'} ${Math.abs(d).toLocaleString()} vs prev
+                    </div>
+                  )}
+                  <div style={{fontSize:10,color:TXT2,marginTop:2}}>{c.label}</div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* View toggle */}
+          <div style={{display:'flex',gap:6,marginBottom:16}}>
+            {[['chart','Chart'],['table','Table']].map(([v,l])=>(
+              <button key={v} onClick={()=>setView(v)} style={{
+                padding:'6px 16px',fontSize:12,fontFamily:F,fontWeight:view===v?700:400,
+                border:`1.5px solid ${view===v?'#6366f1':BORDER}`,borderRadius:99,
+                background:view===v?'#6366f1':'transparent',
+                color:view===v?'white':TXT2,cursor:'pointer'}}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Chart */}
+          {view==='chart'&&(
+            <Card style={{padding:'20px'}}>
+              <div style={{fontSize:12,color:TXT2,marginBottom:12}}>Quota premium (SGD) · past 12 months</div>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={chartData} margin={{top:4,right:8,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9" vertical={false}/>
+                  <XAxis dataKey="name" tick={{fontSize:10,fill:TXT2}} tickLine={false} axisLine={false}/>
+                  <YAxis tick={{fontSize:10,fill:TXT2}} tickLine={false} axisLine={false}
+                    tickFormatter={v=>'$'+Math.round(v/1000)+'k'} width={48}/>
+                  <Tooltip formatter={(v,n)=>[v!=null?'$'+v.toLocaleString():'—',n]}
+                    contentStyle={{fontSize:12,borderRadius:8,border:`1px solid ${BORDER}`}}/>
+                  <Legend wrapperStyle={{fontSize:11,paddingTop:12}}/>
+                  {activeCats.map(c=>(
+                    <Line key={c.key} type="monotone" dataKey={c.short}
+                      stroke={c.color} strokeWidth={2} dot={{r:3,fill:c.color,strokeWidth:0}}
+                      activeDot={{r:5}} connectNulls/>
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Table */}
+          {view==='table'&&(
+            <Card>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <thead>
+                    <tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                      <th style={{...TH,padding:'9px 14px',textAlign:'left'}}>Month</th>
+                      {activeCats.map(c=>(
+                        <th key={c.key} colSpan={2}
+                          style={{...TH,padding:'9px 10px',color:c.color,textAlign:'center',
+                            borderLeft:`1px solid ${TBORDER}`}}>
+                          {c.short}
+                        </th>
+                      ))}
+                    </tr>
+                    <tr style={{borderBottom:`1px solid ${TBORDER}`,background:'#FAFBFF'}}>
+                      <th style={{...TH,padding:'5px 14px',textAlign:'left',fontWeight:400,color:TXT2}}>
+                        LTA data
+                      </th>
+                      {activeCats.map(c=>(
+                        <>
+                          <th key={c.key+'p'} style={{...TH,padding:'5px 8px',textAlign:'right',
+                            fontWeight:400,color:TXT2,borderLeft:`1px solid ${TBORDER}`}}>
+                            Premium
+                          </th>
+                          <th key={c.key+'d'} style={{...TH,padding:'5px 8px',textAlign:'right',
+                            fontWeight:400,color:TXT2}}>
+                            MoM
+                          </th>
+                        </>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...rows].slice(-12).reverse().map((row,i,arr)=>{
+                      const prevRow=arr[i+1];
+                      return (
+                        <tr key={row.month}
+                          style={{borderBottom:`1px solid ${TBORDER}`,
+                            background:i%2===0?CARD:'#FAFBFF'}}>
+                          <td style={{padding:'8px 14px',fontWeight:600,color:TXT,
+                            whiteSpace:'nowrap'}}>
+                            {fmtMK(row.month)}
+                          </td>
+                          {activeCats.map(c=>{
+                            const curr=row[c.key];
+                            const d=diff(curr,prevRow?.[c.key]);
+                            return (
+                              <>
+                                <td key={c.key+'p'} style={{padding:'8px 8px',textAlign:'right',
+                                  fontWeight:600,color:TXT,borderLeft:`1px solid ${TBORDER}`,
+                                  whiteSpace:'nowrap'}}>
+                                  {fmt(curr)}
+                                </td>
+                                <td key={c.key+'d'} style={{padding:'8px 8px',textAlign:'right',
+                                  fontSize:11,fontWeight:600,whiteSpace:'nowrap',
+                                  color:d==null?TXT2:d>0?'#ef4444':'#10b981'}}>
+                                  {d==null?'—':(d>0?'▲':'▼')+' $'+Math.abs(d).toLocaleString()}
+                                </td>
+                              </>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{padding:'10px 14px',fontSize:11,color:TXT2,
+                borderTop:`1px solid ${TBORDER}`}}>
+                Source: Land Transport Authority · data.gov.sg · Dataset d_69b3380ad7e51aff3a7dcc84eba52b8a · MoM = month-on-month change
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
