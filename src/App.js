@@ -144,8 +144,29 @@ const _sb = createClient(
   'https://jnxaheayzoxmhmydbeqd.supabase.co',
   'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
 );
-const sv = async(k,v)=>{ try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv',e);} };
-const ld = async(k,fb)=>{ try{ const {data}=await _sb.from('mkt_store').select('value').eq('key',k).single(); if(data)return JSON.parse(data.value); }catch{} return fb; };
+const sv = async(k,v)=>{
+  // Save to Supabase (shared) + localStorage (backup)
+  try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }catch(e){console.warn('sv:supabase',e);}
+  try{ localStorage.setItem(k,JSON.stringify(v)); }catch{}
+};
+const ld = async(k,fb)=>{
+  // Try Supabase first
+  try{
+    const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
+    if(data&&!error) return JSON.parse(data.value);
+  }catch{}
+  // Fall back to localStorage (recovers old data on original computer)
+  try{
+    const r=localStorage.getItem(k);
+    if(r!==null){
+      const parsed=JSON.parse(r);
+      // Migrate to Supabase so other computers can see it
+      try{ await _sb.from('mkt_store').upsert({key:k,value:r}); }catch{}
+      return parsed;
+    }
+  }catch{}
+  return fb;
+};
 
 /* ── Shared UI ─────────────────────────────────────────────────────────────── */
 const Avatar = ({name,color,size=28}) => (
