@@ -3010,8 +3010,6 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
   const KEYS=['mkt_team','mkt_tasks','mkt_kpis','mkt_exp','mkt_leads','mkt_budgets',
                'mkt_events','mkt_lead_recs','mkt_closed_deals'];
   const [inspect,setInspect]=useState(null);
-  const [syncing,setSyncing]=useState(false);
-  const [syncMsg,setSyncMsg]=useState('');
 
   // Smart merge: combines local + cloud arrays by ID, keeping all unique items
   const smartMergePush=async()=>{
