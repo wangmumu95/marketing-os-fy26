@@ -3175,7 +3175,6 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
           </table>
         )}
       </Card>
-      </Card>
 
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <PBtn onClick={save}>Save changes</PBtn>
