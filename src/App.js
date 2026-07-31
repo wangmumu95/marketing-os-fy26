@@ -142,24 +142,17 @@ const DEFAULT_TEAM = MC.map((c,i)=>({id:`m${i+1}`,name:`Member ${i+1}`,color:c})
 // ── Supabase (shared across all computers) ────────────────────────────────
 const _sb = createClient(
   'https://jnxaheayzoxmhmydbeqd.supabase.co',
-  'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueGFoZWF5em94bWhteWRiZXFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTkwMzQsImV4cCI6MjA5NjA5NTAzNH0.P_7OmeMxn10FtQhYzlnBfl2sJkjotOf8f-nGVGLXa8A'
 );
 const sv = async(k,v)=>{
-  const str=JSON.stringify(v);
-  try{ localStorage.setItem(k,str); }catch{}
-  try{ await _sb.from('mkt_store').upsert({key:k,value:str}); }catch(e){console.warn('sv',e);}
+  try{ await _sb.from('mkt_store').upsert({key:k,value:JSON.stringify(v)}); }
+  catch(e){ console.warn('save error',e); }
 };
 const ld = async(k,fb)=>{
-  // localStorage is always the freshest data on this machine — never overwrite it
-  try{const r=localStorage.getItem(k);if(r!==null)return JSON.parse(r);}catch{}
-  // Only fall back to Supabase if localStorage has nothing (fresh device/browser)
   try{
     const {data,error}=await _sb.from('mkt_store').select('value').eq('key',k).single();
-    if(data&&!error){
-      try{localStorage.setItem(k,data.value);}catch{}
-      return JSON.parse(data.value);
-    }
-  }catch(e){console.warn('ld',e);}
+    if(data&&!error) return JSON.parse(data.value);
+  }catch(e){ console.warn('load error',e); }
   return fb;
 };
 
