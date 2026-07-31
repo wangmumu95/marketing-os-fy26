@@ -2002,6 +2002,18 @@ function parseMonthKey(val){
 }
 function fmtMK(k){if(!k)return 'Unknown';const[yr,mo]=k.split('-');const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1];return `${m} ${yr}`;}
 
+// Approximate COE result date (LTA schedule: B1=1st Wed, B2=3rd Wed of month)
+function getBiddingDate(month,biddingNo){
+  const [yr,mo]=month.split('-').map(Number);
+  const first=new Date(yr,mo-1,1);
+  const dow=first.getDay();
+  const toMon=dow===1?0:dow===0?1:(8-dow)%7||7;
+  const firstMon=1+toMon;
+  const resultDay=biddingNo==='1'?firstMon+2:firstMon+16;
+  const d=new Date(yr,mo-1,resultDay);
+  return d.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'2-digit'});
+}
+
 // Group mapped rows by month
 function groupByMonth(rows,getKey,fallback){
   const out={};
@@ -2794,7 +2806,7 @@ function CoePage(){
         const sorted=[...mbSet].sort().slice(-26); // last ~13 months × 2
         const processed=sorted.map(mb=>{
           const [month,bidding]=mb.split('|');
-          const row={month,bidding,label:`${fmtMK(month)} (B${bidding})`};
+          const row={month,bidding,label:`${fmtMK(month)} — B${bidding}`};
           COE_CATS.forEach(c=>{
             const entry=byKey[month+'|'+bidding+'|'+c.key];
             row[c.key]=entry?entry.premium:null;
@@ -2924,7 +2936,7 @@ function CoePage(){
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                   <thead>
                     <tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
-                      <th style={{...TH,padding:'9px 14px',textAlign:'left'}}>Month</th>
+                      <th style={{...TH,padding:'9px 14px',textAlign:'left'}}>Bidding</th>
                       {activeCats.map(c=>(
                         <th key={c.key} colSpan={2}
                           style={{...TH,padding:'9px 10px',color:c.color,textAlign:'center',
