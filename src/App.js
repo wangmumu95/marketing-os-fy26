@@ -493,89 +493,84 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
     <div>
       <PageHeader title="Dashboard" sub={`${fyLabel(fy)} · ${now.toLocaleDateString('en-SG',{month:'long',year:'numeric'})}`}/>
 
-      <div style={{display:'grid',gridTemplateColumns:'1.2fr 0.8fr',gap:16,marginBottom:16}}>
-
-        {/* Team ongoing tasks */}
-        <Card style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
-            <span style={{fontSize:14,fontWeight:700,color:TXT}}>Team's ongoing tasks</span>
-            <button onClick={()=>setPage('tasks')} style={{background:'#DBEAFE',border:'none',
-              cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
-              borderRadius:8,fontFamily:F}}>View tasks →</button>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:16,justifyItems:'center'}}>
-            {mStats.map(m=>{
-              const r=34, stroke=7, circ=2*Math.PI*r;
-              const segs=[
-                {val:m.todo,  color:'#CBD5E1'},
-                {val:m.ip,    color:'#2563EB'},
-                {val:m.review,color:'#F59E0B'},
-              ];
-              let offset=circ*0.25; // start at 12 o'clock
-              return (
-                <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-                  {/* Donut */}
-                  <div style={{position:'relative',width:90,height:90}}>
-                    <svg width="90" height="90" viewBox="0 0 90 90">
-                      {/* Track */}
-                      <circle cx="45" cy="45" r={r} fill="none"
-                        stroke="#EFF4F8" strokeWidth={stroke}/>
-                      {/* Segments */}
-                      {m.total===0?(
-                        <circle cx="45" cy="45" r={r} fill="none"
-                          stroke="#E2E8F0" strokeWidth={stroke}
-                          strokeDasharray={circ} strokeDashoffset={0}
-                          transform="rotate(-90 45 45)"/>
-                      ):segs.map(({val,color},i)=>{
-                        if(!val) return null;
-                        const len=(val/m.total)*circ;
-                        const el=(
-                          <circle key={i} cx="45" cy="45" r={r} fill="none"
-                            stroke={color} strokeWidth={stroke}
-                            strokeDasharray={`${len} ${circ-len}`}
-                            strokeDashoffset={-offset+circ*0.25}
-                            transform="rotate(-90 45 45)"
-                            strokeLinecap="round"/>
-                        );
-                        offset+=len;
-                        return el;
-                      })}
-                    </svg>
-                    {/* Centre label */}
-                    <div style={{position:'absolute',inset:0,display:'flex',
-                      flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                      <span style={{fontSize:18,fontWeight:800,color:TXT,lineHeight:1}}>{m.total}</span>
-                      <span style={{fontSize:9,color:TXT2,fontWeight:500,marginTop:1}}>tasks</span>
-                    </div>
-                  </div>
-                  {/* Name + avatar */}
-                  <div style={{textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                    <Avatar name={m.name} color={m.color} size={24}/>
-                    <div style={{fontSize:11,fontWeight:600,color:TXT,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                      maxWidth:90}}>{m.name.split(' ')[0]}</div>
-                    {m.total>0&&(
-                      <div style={{fontSize:10,color:TXT2}}>
-                        {m.ip>0&&<span style={{color:'#2563EB',fontWeight:600}}>{m.ip} active</span>}
-                        {m.ip>0&&m.review>0&&' · '}
-                        {m.review>0&&<span style={{color:'#F59E0B',fontWeight:600}}>{m.review} review</span>}
-                      </div>
-                    )}
+      {/* Team ongoing tasks — full width, large donuts */}
+      <Card style={{padding:'22px 28px',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
+          <span style={{fontSize:14,fontWeight:700,color:TXT}}>Team's ongoing tasks</span>
+          <button onClick={()=>setPage('tasks')} style={{background:'#DBEAFE',border:'none',
+            cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
+            borderRadius:8,fontFamily:F}}>View tasks →</button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:`repeat(${mStats.length},1fr)`,gap:24,justifyItems:'center'}}>
+          {mStats.map(m=>{
+            const r=50, stroke=10, circ=2*Math.PI*r;
+            const sz=120;
+            const segs=[
+              {val:m.todo,  color:'#CBD5E1'},
+              {val:m.ip,    color:'#2563EB'},
+              {val:m.review,color:'#F59E0B'},
+            ];
+            let offset=0;
+            return (
+              <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+                {/* Donut */}
+                <div style={{position:'relative',width:sz,height:sz}}>
+                  <svg width={sz} height={sz} viewBox={`0 0 ${sz} ${sz}`}>
+                    <circle cx={sz/2} cy={sz/2} r={r} fill="none"
+                      stroke="#EFF4F8" strokeWidth={stroke}/>
+                    {m.total===0?(
+                      <circle cx={sz/2} cy={sz/2} r={r} fill="none"
+                        stroke="#E2E8F0" strokeWidth={stroke}/>
+                    ):segs.map(({val,color},i)=>{
+                      if(!val) return null;
+                      const len=(val/m.total)*circ;
+                      const el=(
+                        <circle key={i} cx={sz/2} cy={sz/2} r={r} fill="none"
+                          stroke={color} strokeWidth={stroke}
+                          strokeDasharray={`${len} ${circ-len}`}
+                          strokeDashoffset={circ*0.25-offset}
+                          transform={`rotate(-90 ${sz/2} ${sz/2})`}
+                          strokeLinecap="round"/>
+                      );
+                      offset+=len;
+                      return el;
+                    })}
+                  </svg>
+                  <div style={{position:'absolute',inset:0,display:'flex',
+                    flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+                    <span style={{fontSize:24,fontWeight:800,color:TXT,lineHeight:1}}>{m.total}</span>
+                    <span style={{fontSize:10,color:TXT2,fontWeight:500,marginTop:2}}>tasks</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <div style={{display:'flex',gap:14,marginTop:16,paddingTop:14,
-            borderTop:`1px solid ${TBORDER}`}}>
-            {[['#CBD5E1','To Do'],['#2563EB','In Progress'],['#F59E0B','Review']].map(([c,l])=>(
-              <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
-                <div style={{width:8,height:8,borderRadius:'50%',background:c}}/>
-                <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{l}</span>
+                {/* Avatar + name */}
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                  <Avatar name={m.name} color={m.color} size={28}/>
+                  <div style={{fontSize:12,fontWeight:600,color:TXT,textAlign:'center',
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                    maxWidth:110}}>{m.name.split(' ')[0]}</div>
+                  <div style={{fontSize:11,color:TXT2,textAlign:'center',minHeight:16}}>
+                    {m.ip>0&&<span style={{color:'#2563EB',fontWeight:600}}>{m.ip} active</span>}
+                    {m.ip>0&&m.review>0&&<span style={{color:TXT2}}> · </span>}
+                    {m.review>0&&<span style={{color:'#F59E0B',fontWeight:600}}>{m.review} review</span>}
+                    {m.todo>0&&m.ip===0&&m.review===0&&<span style={{color:'#94a3b8'}}>{m.todo} to do</span>}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </Card>
+            );
+          })}
+        </div>
+        <div style={{display:'flex',gap:16,marginTop:20,paddingTop:16,borderTop:`1px solid ${TBORDER}`}}>
+          {[['#CBD5E1','To Do'],['#2563EB','In Progress'],['#F59E0B','Review']].map(([c,l])=>(
+            <div key={l} style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:9,height:9,borderRadius:'50%',background:c}}/>
+              <span style={{fontSize:11,color:TXT2,fontWeight:500}}>{l}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1.4fr',gap:16,marginBottom:16}}>
+
 
         {/* KPI overview — text + check */}
         <Card style={{padding:'18px 20px',overflow:'auto',maxHeight:340}}>
