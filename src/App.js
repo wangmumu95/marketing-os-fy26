@@ -3006,7 +3006,241 @@ function CoePage(){
 }
 
 /* ── GV Registration Stats ──────────────────────────────────────────────────── */
+const LTA_GV_PDF='https://www.lta.gov.sg/content/dam/ltagov/who_we_are/statistics_and_publications/statistics/pdf/M08-CVS_Regn_by_make.pdf';
+
 function GVPage(){
+  const [rows,setRows]   =useState([]);
+  const [loading,setLoad]=useState(false);
+  const [error,setError] =useState('');
+  const [fetched,setFetched]=useState('');
+  const [view,setView]   =useState('table');
+
+  const fetchData=async()=>{
+    setLoad(true);setError('');
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:1000,
+          messages:[{
+            role:'user',
+            content:[
+              {
+                type:'document',
+                source:{type:'url',url:LTA_GV_PDF}
+              },
+              {
+                type:'text',
+                text:`From the "Total" row in this LTA PDF, extract the monthly LGV (Light Goods Vehicles) and HGV (Heavy Goods Vehicles) registration counts for all available months. Return ONLY a JSON array — no explanation, no markdown, no code fences — exactly like this: [{"month":"2025-01","lgv":149,"hgv":264},{"month":"2025-02","lgv":252,"hgv":283}]. Use YYYY-MM format for month. Include every month present in the PDF.`
+              }
+            ]
+          }]
+        })
+      });
+      const d=await res.json();
+      if(d.error) throw new Error(d.error.message||'API error');
+      const txt=d.content?.find(c=>c.type==='text')?.text||'';
+      // Extract JSON array from response
+      const match=txt.match(/\[[\s\S]*\]/);
+      if(!match) throw new Error('Could not parse data from PDF response.');
+      const parsed=JSON.parse(match[0]);
+      const sorted=parsed
+        .map(r=>({month:r.month,lgv:Number(r.lgv)||0,hgv:Number(r.hgv)||0,total:(Number(r.lgv)||0)+(Number(r.hgv)||0)}))
+        .sort((a,b)=>a.month.localeCompare(b.month));
+      if(!sorted.length) throw new Error('No data found in the PDF.');
+      setRows(sorted);
+      setFetched(new Date().toLocaleString('en-SG',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+    }catch(e){
+      setError(e.message);
+    }
+    setLoad(false);
+  };
+
+  useEffect(()=>{fetchData();},[]);
+
+  const fmt=n=>n==null?'—':Number(n).toLocaleString();
+  const diff=(a,b)=>a==null||b==null?null:a-b;
+  const latest=rows[rows.length-1];
+  const prev  =rows[rows.length-2];
+
+  const chartData=rows.map(r=>({
+    name:fmtMK(r.month),
+    'LGV (≤3.5t)':r.lgv||null,
+    'HGV (3.5–16t)':r.hgv||null,
+  }));
+
+  return (
+    <div>
+      <PageHeader title="GV New Registrations"
+        sub="Light & Heavy Goods Vehicles · Jan 2025 to latest · Source: LTA M08 PDF"/>
+
+      {/* Fetch controls */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,flexWrap:'wrap'}}>
+        <button onClick={fetchData} disabled={loading}
+          style={{background:'#6366f1',color:'white',border:'none',
+            cursor:loading?'not-allowed':'pointer',opacity:loading?0.7:1,
+            padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
+            display:'flex',alignItems:'center',gap:6}}>
+          <i className={`ti ${loading?'ti-loader-2':'ti-refresh'}`} style={{fontSize:14}} aria-hidden/>
+          {loading?'Reading LTA PDF…':'Refresh from LTA'}
+        </button>
+        {fetched&&!loading&&(
+          <span style={{fontSize:12,color:TXT2}}>Last updated: {fetched}</span>
+        )}
+        <a href={LTA_GV_PDF} target="_blank" rel="noopener noreferrer"
+          style={{fontSize:12,color:'#6366f1',display:'flex',alignItems:'center',gap:4,
+            textDecoration:'none',marginLeft:'auto'}}>
+          <i className="ti ti-file-type-pdf" style={{fontSize:13}} aria-hidden/>
+          View source PDF
+        </a>
+      </div>
+
+      {loading&&!rows.length&&(
+        <Card style={{padding:'48px',textAlign:'center'}}>
+          <i className="ti ti-loader-2" style={{fontSize:28,color:'#6366f1',display:'block',marginBottom:12}} aria-hidden/>
+          <p style={{color:TXT,fontSize:14,fontWeight:600,margin:'0 0 6px'}}>Reading LTA PDF…</p>
+          <p style={{color:TXT2,fontSize:12,margin:0}}>Claude is extracting LGV & HGV figures from the source document</p>
+        </Card>
+      )}
+
+      {error&&(
+        <Card style={{padding:'24px',border:'1px solid #FECACA',background:'#FEF2F2',marginBottom:16}}>
+          <p style={{color:'#dc2626',fontSize:13,fontWeight:600,margin:'0 0 4px'}}>
+            <i className="ti ti-alert-circle" style={{marginRight:6}} aria-hidden/>Could not read PDF
+          </p>
+          <p style={{color:'#dc2626',fontSize:12,margin:'0 0 10px'}}>{error}</p>
+          <button onClick={fetchData}
+            style={{background:'#dc2626',color:'white',border:'none',cursor:'pointer',
+              padding:'6px 14px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
+            Try again
+          </button>
+        </Card>
+      )}
+
+      {!loading&&!error&&rows.length>0&&(
+        <>
+          {/* Summary cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
+            {[
+              {label:`LGV — ${fmtMK(latest?.month)}`,val:latest?.lgv,pv:prev?.lgv,color:'#6366f1',bg:'#EEEEFF',icon:'ti-truck'},
+              {label:`HGV — ${fmtMK(latest?.month)}`,val:latest?.hgv,pv:prev?.hgv,color:'#0891b2',bg:'#E0F5FB',icon:'ti-truck'},
+              {label:`Total GV — ${fmtMK(latest?.month)}`,val:latest?.total,pv:prev?.total,color:'#10b981',bg:'#E0F7EF',icon:'ti-chart-bar'},
+              {label:'YTD LGV',val:rows.reduce((s,r)=>s+r.lgv,0),pv:null,color:'#f59e0b',bg:'#FEF4DC',icon:'ti-sum'},
+              {label:'YTD HGV',val:rows.reduce((s,r)=>s+r.hgv,0),pv:null,color:'#8b5cf6',bg:'#F0ECFF',icon:'ti-sum'},
+            ].map(({label,val,pv,color,bg,icon})=>{
+              const d=diff(val,pv);
+              return (
+                <Card key={label} style={{padding:'14px 16px',borderTop:`3px solid ${color}`}}>
+                  <div style={{width:28,height:28,borderRadius:8,background:bg,
+                    display:'flex',alignItems:'center',justifyContent:'center',marginBottom:8}}>
+                    <i className={`ti ${icon}`} style={{fontSize:14,color}} aria-hidden/>
+                  </div>
+                  <div style={{fontSize:11,color:TXT2,fontWeight:600,marginBottom:4,
+                    textTransform:'uppercase',letterSpacing:'0.04em'}}>{label}</div>
+                  <div style={{fontSize:20,fontWeight:700,color:TXT}}>{fmt(val)}</div>
+                  {d!=null&&(
+                    <div style={{fontSize:11,marginTop:4,fontWeight:600,
+                      color:d>0?'#10b981':'#ef4444'}}>
+                      {d>0?'▲':'▼'} {Math.abs(d).toLocaleString()} vs prev month
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* View toggle */}
+          <div style={{display:'flex',gap:6,marginBottom:16}}>
+            {[['chart','Chart'],['table','Table']].map(([v,l])=>(
+              <button key={v} onClick={()=>setView(v)} style={{
+                padding:'6px 16px',fontSize:12,fontFamily:F,fontWeight:view===v?700:400,
+                border:`1.5px solid ${view===v?'#6366f1':BORDER}`,borderRadius:99,
+                background:view===v?'#6366f1':'transparent',
+                color:view===v?'white':TXT2,cursor:'pointer'}}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Chart */}
+          {view==='chart'&&(
+            <Card style={{padding:'20px'}}>
+              <div style={{fontSize:12,color:TXT2,marginBottom:12}}>
+                Monthly new registrations — LGV vs HGV · 2025
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={chartData} margin={{top:4,right:8,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9" vertical={false}/>
+                  <XAxis dataKey="name" tick={{fontSize:11,fill:TXT2}} tickLine={false} axisLine={false}/>
+                  <YAxis tick={{fontSize:11,fill:TXT2}} tickLine={false} axisLine={false} width={40}/>
+                  <Tooltip contentStyle={{fontSize:12,borderRadius:8,border:`1px solid ${BORDER}`}}/>
+                  <Legend wrapperStyle={{fontSize:11,paddingTop:12}}/>
+                  <Bar dataKey="LGV (≤3.5t)"  fill="#6366f1" radius={[4,4,0,0]} maxBarSize={40}/>
+                  <Bar dataKey="HGV (3.5–16t)" fill="#0891b2" radius={[4,4,0,0]} maxBarSize={40}/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Table */}
+          {view==='table'&&(
+            <Card>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                  <thead>
+                    <tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                      {['Month','LGV (≤3.5t)','vs prev','HGV (3.5–16t)','vs prev','Total','vs prev'].map(h=>(
+                        <th key={h} style={{...TH,padding:'10px 16px',textAlign:h==='Month'?'left':'right'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...rows].reverse().map((row,i,arr)=>{
+                      const pr=arr[i+1];
+                      const dl=diff(row.lgv,pr?.lgv);
+                      const dh=diff(row.hgv,pr?.hgv);
+                      const dt=diff(row.total,pr?.total);
+                      const Chg=({d})=>d==null
+                        ?<span style={{color:TXT2}}>—</span>
+                        :<span style={{fontWeight:600,color:d>0?'#10b981':'#ef4444'}}>
+                          {d>0?'▲':'▼'} {Math.abs(d).toLocaleString()}
+                        </span>;
+                      return (
+                        <tr key={row.month} style={{borderBottom:`1px solid ${TBORDER}`,background:i%2===0?CARD:'#FAFBFF'}}>
+                          <td style={{padding:'10px 16px',fontWeight:600,color:TXT}}>{fmtMK(row.month)}</td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:'#6366f1'}}>{fmt(row.lgv)}</td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontSize:12}}><Chg d={dl}/></td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:'#0891b2'}}>{fmt(row.hgv)}</td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontSize:12}}><Chg d={dh}/></td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:TXT}}>{fmt(row.total)}</td>
+                          <td style={{padding:'10px 16px',textAlign:'right',fontSize:12}}><Chg d={dt}/></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{borderTop:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                      <td style={{padding:'10px 16px',fontWeight:700,color:TXT}}>YTD Total</td>
+                      <td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:'#6366f1'}}>{rows.reduce((s,r)=>s+r.lgv,0).toLocaleString()}</td>
+                      <td/><td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:'#0891b2'}}>{rows.reduce((s,r)=>s+r.hgv,0).toLocaleString()}</td>
+                      <td/><td style={{padding:'10px 16px',textAlign:'right',fontWeight:700,color:TXT}}>{rows.reduce((s,r)=>s+r.total,0).toLocaleString()}</td>
+                      <td/>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div style={{padding:'10px 16px',fontSize:11,color:TXT2,borderTop:`1px solid ${TBORDER}`}}>
+                Source: LTA M08 · LGV = Light Goods Vehicles (≤3.5 metric tons) · HGV = Heavy Goods Vehicles (3.5–16 metric tons) · Includes COE-exempted and off-road vehicles
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
   const [rows,setRows]   =useState([]);
   const [loading,setLoad]=useState(true);
   const [error,setError] =useState('');
