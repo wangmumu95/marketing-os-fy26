@@ -2957,7 +2957,7 @@ function CoePage(){
                           </th>
                           <th key={c.key+'d'} style={{...TH,padding:'5px 8px',textAlign:'right',
                             fontWeight:400,color:TXT2}}>
-                            MoM
+                            Change
                           </th>
                         </>
                       ))}
@@ -3000,7 +3000,7 @@ function CoePage(){
               </div>
               <div style={{padding:'10px 14px',fontSize:11,color:TXT2,
                 borderTop:`1px solid ${TBORDER}`}}>
-                Source: Land Transport Authority · data.gov.sg · Dataset d_69b3380ad7e51aff3a7dcc84eba52b8a · MoM = month-on-month change
+                Source: Land Transport Authority · data.gov.sg · Dataset d_69b3380ad7e51aff3a7dcc84eba52b8a · Change = vs previous bidding exercise
               </div>
             </Card>
           )}
