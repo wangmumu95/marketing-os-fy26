@@ -548,11 +548,14 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
                   <div style={{fontSize:12,fontWeight:600,color:TXT,textAlign:'center',
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                     maxWidth:110}}>{m.name.split(' ')[0]}</div>
-                  <div style={{fontSize:11,color:TXT2,textAlign:'center',minHeight:16}}>
+                  <div style={{fontSize:11,color:TXT2,textAlign:'center',minHeight:16,
+                    display:'flex',gap:4,flexWrap:'wrap',justifyContent:'center'}}>
                     {m.ip>0&&<span style={{color:'#2563EB',fontWeight:600}}>{m.ip} active</span>}
-                    {m.ip>0&&m.review>0&&<span style={{color:TXT2}}> · </span>}
+                    {m.ip>0&&(m.review>0||m.todo>0)&&<span style={{color:TXT2}}>·</span>}
                     {m.review>0&&<span style={{color:'#F59E0B',fontWeight:600}}>{m.review} review</span>}
-                    {m.todo>0&&m.ip===0&&m.review===0&&<span style={{color:'#94a3b8'}}>{m.todo} to do</span>}
+                    {m.review>0&&m.todo>0&&<span style={{color:TXT2}}>·</span>}
+                    {m.todo>0&&<span style={{color:'#94a3b8',fontWeight:600}}>{m.todo} to do</span>}
+                    {m.total===0&&<span style={{color:'#CBD5E1'}}>no tasks</span>}
                   </div>
                 </div>
               </div>
@@ -569,51 +572,56 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
         </div>
       </Card>
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1.4fr',gap:16,marginBottom:16}}>
-
-
-        {/* KPI overview — text + check */}
-        <Card style={{padding:'18px 20px',overflow:'auto',maxHeight:340}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <span style={{fontSize:14,fontWeight:700,color:TXT}}>KPI overview</span>
-            <button onClick={()=>setPage('kpis')} style={{background:'#DBEAFE',border:'none',
-              cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
-              borderRadius:8,fontFamily:F}}>View →</button>
-          </div>
-          {eKpiSummary.map(({e,kpis:ek})=>{
-            const {a,bg}=EC[e]||{a:'#94a3b8',bg:'#F1F5F9'};
-            return (
-              <div key={e} style={{marginBottom:14}}>
-                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:a,flexShrink:0}}/>
-                  <span style={{fontSize:12,fontWeight:700,color:TXT}}>{e}</span>
-                  {ek.length===0&&<span style={{fontSize:10,color:TXT2,fontWeight:400}}>— no KPIs</span>}
-                  {ek.length>0&&<span style={{fontSize:10,color:TXT2,marginLeft:'auto'}}>
-                    {ek.filter(k=>k.done).length}/{ek.length}
-                  </span>}
-                </div>
-                {ek.map(k=>(
-                  <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,
-                    padding:'4px 8px',borderRadius:7,marginBottom:3,
-                    background:k.done?'#F0F9FF':'#F8FAFC',
-                    border:`1px solid ${k.done?'#BAE6FD':BORDER}`}}>
-                    <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
-                      background:k.done?'#0EA5E9':'transparent',
-                      border:`1.5px solid ${k.done?'#0EA5E9':'#CBD5E1'}`,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      {k.done&&<i className="ti ti-check" style={{fontSize:8,color:'white'}} aria-hidden/>}
-                    </div>
-                    <span style={{fontSize:11,fontWeight:500,color:k.done?'#0369A1':TXT,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {k.title||k.type||'KPI'}
-                    </span>
+      {/* KPI overview — full width grid of cards */}
+      <Card style={{padding:'18px 20px',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <span style={{fontSize:14,fontWeight:700,color:TXT}}>KPI overview</span>
+          <button onClick={()=>setPage('kpis')} style={{background:'#DBEAFE',border:'none',
+            cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
+            borderRadius:8,fontFamily:F}}>View →</button>
+        </div>
+        {kpis.length===0?(
+          <p style={{fontSize:13,color:TXT2,margin:0}}>No KPIs set yet.</p>
+        ):(
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+            {kpis.map(k=>{
+              const {a,bg}=EC[k.entity]||{a:'#94a3b8',bg:'#F1F5F9'};
+              return (
+                <div key={k.id} style={{padding:'12px 14px',borderRadius:10,
+                  background:k.done?'#F0F9FF':INBG,
+                  border:`1.5px solid ${k.done?'#BAE6FD':BORDER}`,
+                  display:'flex',alignItems:'flex-start',gap:10}}>
+                  {/* Done toggle indicator */}
+                  <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,marginTop:1,
+                    background:k.done?'#0EA5E9':'transparent',
+                    border:`2px solid ${k.done?'#0EA5E9':'#CBD5E1'}`,
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {k.done&&<i className="ti ti-check" style={{fontSize:9,color:'white'}} aria-hidden/>}
                   </div>
-                ))}
-              </div>
-            );
-          })}
-        </Card>
-      </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    {/* Entity badge */}
+                    <div style={{display:'inline-flex',alignItems:'center',gap:4,
+                      background:bg,borderRadius:99,padding:'1px 7px',marginBottom:5}}>
+                      <div style={{width:5,height:5,borderRadius:'50%',background:a,flexShrink:0}}/>
+                      <span style={{fontSize:10,fontWeight:600,color:a}}>{k.entity}</span>
+                    </div>
+                    {/* KPI title */}
+                    <p style={{margin:0,fontSize:12,fontWeight:600,
+                      color:k.done?'#0369A1':TXT,lineHeight:1.4,
+                      textDecoration:k.done?'line-through':'none'}}>
+                      {k.title||k.type||'KPI'}
+                    </p>
+                    {k.done&&<span style={{fontSize:10,color:'#0EA5E9',fontWeight:600,marginTop:3,display:'block'}}>✓ Achieved</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr',gap:16,marginBottom:16}}>
+
 
       {/* All tasks sorted by deadline */}
       <Card style={{padding:'18px 20px'}}>
@@ -667,6 +675,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
           </button>
         )}
       </Card>
+      </div>
     </div>
   );
 }
