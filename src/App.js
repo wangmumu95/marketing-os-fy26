@@ -541,17 +541,16 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
                         return el;
                       })}
                     </svg>
-                    {/* Centre label */}
+                    {/* Centre — avatar */}
                     <div style={{position:'absolute',inset:0,display:'flex',
-                      flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                      <span style={{fontSize:18,fontWeight:800,color:TXT,lineHeight:1}}>{m.total}</span>
-                      <span style={{fontSize:9,color:TXT2,fontWeight:500,marginTop:1}}>tasks</span>
+                      flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
+                      <Avatar name={m.name} color={m.color} size={32}/>
+                      <span style={{fontSize:10,fontWeight:700,color:TXT2,lineHeight:1}}>{m.total}</span>
                     </div>
                   </div>
-                  {/* Name + avatar */}
+                  {/* Name + breakdown */}
                   <div style={{textAlign:'center'}}>
-                    <Avatar name={m.name} color={m.color} size={24}/>
-                    <div style={{fontSize:11,fontWeight:600,color:TXT,marginTop:4,
+                    <div style={{fontSize:11,fontWeight:600,color:TXT,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                       maxWidth:90}}>{m.name.split(' ')[0]}</div>
                     {m.total>0&&(
