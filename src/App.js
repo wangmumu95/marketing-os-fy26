@@ -503,7 +503,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
               cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
               borderRadius:8,fontFamily:F}}>View tasks →</button>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(90px,1fr))',gap:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:16,justifyItems:'center'}}>
             {mStats.map(m=>{
               const r=34, stroke=7, circ=2*Math.PI*r;
               const segs=[
@@ -541,20 +541,21 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
                         return el;
                       })}
                     </svg>
-                    {/* Centre — avatar */}
+                    {/* Centre label */}
                     <div style={{position:'absolute',inset:0,display:'flex',
-                      flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
-                      <Avatar name={m.name} color={m.color} size={32}/>
-                      <span style={{fontSize:10,fontWeight:700,color:TXT2,lineHeight:1}}>{m.total}</span>
+                      flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+                      <span style={{fontSize:18,fontWeight:800,color:TXT,lineHeight:1}}>{m.total}</span>
+                      <span style={{fontSize:9,color:TXT2,fontWeight:500,marginTop:1}}>tasks</span>
                     </div>
                   </div>
-                  {/* Name + breakdown */}
-                  <div style={{textAlign:'center'}}>
+                  {/* Name + avatar */}
+                  <div style={{textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                    <Avatar name={m.name} color={m.color} size={24}/>
                     <div style={{fontSize:11,fontWeight:600,color:TXT,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                       maxWidth:90}}>{m.name.split(' ')[0]}</div>
                     {m.total>0&&(
-                      <div style={{fontSize:10,color:TXT2,marginTop:1}}>
+                      <div style={{fontSize:10,color:TXT2}}>
                         {m.ip>0&&<span style={{color:'#2563EB',fontWeight:600}}>{m.ip} active</span>}
                         {m.ip>0&&m.review>0&&' · '}
                         {m.review>0&&<span style={{color:'#F59E0B',fontWeight:600}}>{m.review} review</span>}
