@@ -2780,24 +2780,24 @@ function CoePage(){
       .then(r=>r.json())
       .then(j=>{
         const records=j.result.records;
-        // Group by month+cat, average the two bidding exercises
-        const byMC={};
+        // Group by month + bidding_no + cat (keep both exercises separate)
+        const byKey={};
         records.forEach(r=>{
-          const k=r.month+'|'+r.vehicle_class;
+          const bn=String(r.bidding_no||'1');
+          const k=r.month+'|'+bn+'|'+r.vehicle_class;
           const qp=parseFloat(r.premium);
           if(!r.month||!r.vehicle_class||isNaN(qp)) return;
-          if(!byMC[k]) byMC[k]={month:r.month,cat:r.vehicle_class,vals:[]};
-          byMC[k].vals.push(qp);
+          byKey[k]={month:r.month,bidding:bn,cat:r.vehicle_class,premium:Math.round(qp)};
         });
-        // Build month rows
-        const monthSet=new Set(Object.values(byMC).map(x=>x.month));
-        const sorted=[...monthSet].sort().slice(-13);
-        const processed=sorted.map(m=>{
-          const row={month:m};
+        // Build rows keyed by month+bidding
+        const mbSet=new Set(Object.values(byKey).map(x=>x.month+'|'+x.bidding));
+        const sorted=[...mbSet].sort().slice(-26); // last ~13 months × 2
+        const processed=sorted.map(mb=>{
+          const [month,bidding]=mb.split('|');
+          const row={month,bidding,label:`${fmtMK(month)} (B${bidding})`};
           COE_CATS.forEach(c=>{
-            const k=m+'|'+c.key;
-            const entry=byMC[k];
-            row[c.key]=entry?Math.round(entry.vals.reduce((a,b)=>a+b,0)/entry.vals.length):null;
+            const entry=byKey[month+'|'+bidding+'|'+c.key];
+            row[c.key]=entry?entry.premium:null;
           });
           return row;
         });
@@ -2817,15 +2817,15 @@ function CoePage(){
   const latest=rows[rows.length-1];
   const prev=rows[rows.length-2];
 
-  // recharts data (last 12 months)
-  const chartData=rows.slice(-12).map(r=>({
-    name:fmtMK(r.month),
+  // recharts data — last 24 data points (both biddings, ~12 months)
+  const chartData=rows.slice(-24).map(r=>({
+    name:r.label,
     ...Object.fromEntries(COE_CATS.map(c=>[c.short,r[c.key]])),
   }));
 
   return (
     <div>
-      <PageHeader title="COE Results" sub="Live from LTA via data.gov.sg · both bidding exercises averaged"/>
+      <PageHeader title="COE Results" sub="Live from LTA via data.gov.sg · Bidding 1 &amp; 2 shown separately"/>
 
       {/* Category toggles */}
       <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
@@ -2897,7 +2897,7 @@ function CoePage(){
           {/* Chart */}
           {view==='chart'&&(
             <Card style={{padding:'20px'}}>
-              <div style={{fontSize:12,color:TXT2,marginBottom:12}}>Quota premium (SGD) · past 12 months</div>
+              <div style={{fontSize:12,color:TXT2,marginBottom:12}}>Quota premium (SGD) · both bidding exercises · past ~12 months</div>
               <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={chartData} margin={{top:4,right:8,bottom:0,left:0}}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9" vertical={false}/>
@@ -2960,7 +2960,7 @@ function CoePage(){
                             background:i%2===0?CARD:'#FAFBFF'}}>
                           <td style={{padding:'8px 14px',fontWeight:600,color:TXT,
                             whiteSpace:'nowrap'}}>
-                            {fmtMK(row.month)}
+                            {row.label}
                           </td>
                           {activeCats.map(c=>{
                             const curr=row[c.key];
