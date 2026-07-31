@@ -6,31 +6,31 @@ import { createClient } from '@supabase/supabase-js';
 
 const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','Others'];
 const EC = {
-  'PPVTL':   { a:'#6366f1', bg:'#EEEEFF', t:'#4338ca' },
+  'PPVTL':   { a:'#2563EB', bg:'#DBEAFE', t:'#1D4ED8' },
   'PPA/PPC': { a:'#0891b2', bg:'#E0F5FB', t:'#0369a1' },
-  'EM':      { a:'#10b981', bg:'#E0F7EF', t:'#047857' },
-  'LOADUP':  { a:'#f59e0b', bg:'#FEF4DC', t:'#92400e' },
-  'Others':  { a:'#8b5cf6', bg:'#F0ECFF', t:'#6d28d9' },
+  'EM':      { a:'#7C3AED', bg:'#EDE9FE', t:'#5B21B6' },
+  'LOADUP':  { a:'#F59E0B', bg:'#FEF3C7', t:'#92400E' },
+  'Others':  { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
 };
 const TASK_COLS = ['To Do','In Progress','Review','Done'];
-const CC = { 'To Do':'#94a3b8','In Progress':'#6366f1','Review':'#f59e0b','Done':'#10b981' };
-const COL_BG = { 'To Do':'#F4F6FD','In Progress':'#EEEEFF','Review':'#FFFAEC','Done':'#E8FAF3' };
+const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9' };
+const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF' };
 const KPI_TYPES = ['Leads Generated','Conversion Rate','Social Media','Campaign ROI','Revenue/Sales'];
 const KPI_UNITS = {'Leads Generated':'','Conversion Rate':'%','Social Media':'','Campaign ROI':'%','Revenue/Sales':'$'};
 const EXP_CATS = ['Lead Generation','Awareness','Customer Retention','Essential Services'];
 const LEAD_SRCS = ['Long Term','Short Term','Untrackable'];
 const FY_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
 const PRIORITIES = ['Low','Medium','High','Urgent'];
-const PC = { Low:'#94a3b8', Medium:'#6366f1', High:'#f59e0b', Urgent:'#ef4444' };
-const PBG = { Low:'#F1F5F9', Medium:'#EEEEFF', High:'#FFFAEC', Urgent:'#FEE9E9' };
-const MC = ['#6366f1','#0891b2','#10b981','#f59e0b','#ef4444'];
+const PC = { Low:'#94a3b8', Medium:'#2563EB', High:'#F59E0B', Urgent:'#ef4444' };
+const PBG = { Low:'#F1F5F9', Medium:'#DBEAFE', High:'#FFFBEB', Urgent:'#FEE9E9' };
+const MC = ['#2563EB','#0891b2','#7C3AED','#F59E0B','#ef4444'];
 const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
 const TEAM_PASSWORD = 'Panpac3003';
 
 const EVENT_TYPES = {
   'Shooting':   {color:'#0891b2',bg:'#E0F5FB'},
-  'Activation': {color:'#10b981',bg:'#E0F7EF'},
+  'Activation': {color:'#0EA5E9',bg:'#E0F2FE'},
   'Leave':      {color:'#f59e0b',bg:'#FEF4DC'},
   'Event':      {color:'#8b5cf6',bg:'#F0ECFF'},
   'Other':      {color:'#94a3b8',bg:'#F1F5F9'},
@@ -73,15 +73,15 @@ const SG_HOLIDAYS = {
   '2027-12-25':'Christmas Day',
 };
 
-const F = "'Calibri','Trebuchet MS',Arial,sans-serif";
-const PAGE  = '#EEF1F9';
+const F = "'Inter','DM Sans',system-ui,sans-serif";
+const PAGE  = '#EFF4F8';
 const CARD  = '#FFFFFF';
-const CSHADOW = '0 2px 12px rgba(20,25,60,0.07)';
-const BORDER = '#E5E9F5';
-const TBORDER = '#EEF1F9';
-const TXT = '#1A1D30';
-const TXT2 = '#7C829A';
-const INBG = '#F7F8FD';
+const CSHADOW = '0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04)';
+const BORDER = '#E2E8F0';
+const TBORDER = '#F1F5F9';
+const TXT = '#0F172A';
+const TXT2 = '#64748B';
+const INBG = '#F8FAFC';
 
 const fyNow   = () => { const m=new Date().getMonth(),y=new Date().getFullYear(); return m>=3?y:y-1; };
 const fyLabel = y  => `FY${String(y).slice(2)}/${String(y+1).slice(2)}`;
@@ -116,7 +116,7 @@ const getLinkColor = url => {
     if(h.includes('notion')) return '#000000';
     if(h.includes('dropbox')) return '#0061ff';
   } catch {}
-  return '#6366f1';
+  return '#2563EB';
 };
 
 // Compress image to max 800px and JPEG 70% — keeps base64 small enough for storage
@@ -176,7 +176,7 @@ function AvatarStack({assignees,size=20}) {
         </div>
       ))}
       {extra>0&&(
-        <div style={{marginLeft:-6,width:size,height:size,borderRadius:'50%',background:'#E5E9F5',
+        <div style={{marginLeft:-6,width:size,height:size,borderRadius:'50%',background:'#E2E8F0',
           border:'2px solid white',display:'flex',alignItems:'center',justifyContent:'center',
           fontSize:size*.3,fontWeight:600,color:TXT2,flexShrink:0}}>+{extra}</div>
       )}
@@ -236,9 +236,9 @@ const Sel = ({children,...p}) => (
   <select {...p} style={{...inputStyle,cursor:'pointer',...p.style}}>{children}</select>
 );
 const PBtn = ({children,onClick,style={}}) => (
-  <button onClick={onClick} style={{background:'#6366f1',color:'white',border:'none',cursor:'pointer',
+  <button onClick={onClick} style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
     padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
-    display:'flex',alignItems:'center',gap:4,boxShadow:'0 2px 8px rgba(99,102,241,0.3)',...style}}>
+    display:'flex',alignItems:'center',gap:4,boxShadow:'0 2px 8px rgba(37,99,235,0.3)',...style}}>
     {children}
   </button>
 );
@@ -283,12 +283,12 @@ function LoginPage({onLogin}) {
   };
   return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',
-      height:'100vh',width:'100vw',background:'#EEF1F9',fontFamily:F}}>
+      height:'100vh',width:'100vw',background:'#EFF4F8',fontFamily:F}}>
       <div style={{background:CARD,borderRadius:20,
         boxShadow:'0 8px 40px rgba(15,20,50,0.12)',
         border:`1px solid ${BORDER}`,padding:'40px 48px',
         width:'100%',maxWidth:380,textAlign:'center'}}>
-        <div style={{width:56,height:56,borderRadius:16,background:'#6366f1',
+        <div style={{width:56,height:56,borderRadius:16,background:'#2563EB',
           display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
           <i className="ti ti-chart-bar" style={{fontSize:26,color:'white'}}/>
         </div>
@@ -304,10 +304,10 @@ function LoginPage({onLogin}) {
             background:error?'#FEE9E9':INBG}}/>
         {error&&<p style={{color:'#ef4444',fontSize:12,margin:'0 0 12px',fontWeight:500}}>
           Incorrect password. Try again.</p>}
-        <button onClick={attempt} style={{width:'100%',background:'#6366f1',
+        <button onClick={attempt} style={{width:'100%',background:'#2563EB',
           color:'white',border:'none',cursor:'pointer',padding:'11px',
           borderRadius:10,fontSize:14,fontWeight:700,fontFamily:F,
-          boxShadow:'0 4px 12px rgba(99,102,241,0.35)'}}>
+          boxShadow:'0 4px 12px rgba(37,99,235,0.35)'}}>
           Sign in →
         </button>
         <p style={{margin:'20px 0 0',fontSize:11,color:TXT2}}>
@@ -385,79 +385,61 @@ export default function App() {
     <div style={{display:'flex',height:'100vh',width:'100vw',fontFamily:F,background:PAGE,overflow:'hidden'}}>
 
       {/* ── Sidebar ── */}
-      <div style={{width:200,flexShrink:0,height:'100vh',background:'#1A1D30',
-        display:'flex',flexDirection:'column'}}>
-
-        {/* Logo — fixed at top */}
-        <div style={{flexShrink:0,padding:'20px 12px 12px',display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:32,height:32,borderRadius:10,background:'#6366f1',
-            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <i className="ti ti-chart-bar" style={{fontSize:16,color:'white'}} aria-hidden/>
+      <div style={{width:210,flexShrink:0,height:'100vh',background:'#102B4E',
+        display:'flex',flexDirection:'column',position:'sticky',top:0,
+        boxShadow:'4px 0 24px rgba(0,0,0,0.12)'}}>
+        {/* Logo area */}
+        <div style={{padding:'24px 20px 20px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{fontSize:15,fontWeight:800,color:'white',letterSpacing:'-0.3px',
+            lineHeight:1.2}}>Marketing OS</div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.45)',marginTop:3,fontWeight:500}}>
+            Pan Pacific Leasing
           </div>
-          <span style={{color:'white',fontSize:14,fontWeight:700}}>Marketing OS</span>
         </div>
-
-        {/* Middle — scrollable if needed */}
-        <div style={{flex:1,overflowY:'auto',padding:'0 12px',minHeight:0}}>
-
-          {/* Nav */}
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
-            letterSpacing:'0.08em',padding:'0 8px',marginBottom:6}}>Menu</div>
-          {NAV.map(n=>{
+        {/* Nav items */}
+        <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
+          {NAV.filter(n=>n.id!=='settings').map(n=>{
             const active=page===n.id;
             return (
               <button key={n.id} onClick={()=>setPage(n.id)} style={{
-                display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:10,
-                border:'none',background:active?'rgba(99,102,241,0.2)':'transparent',
-                color:active?'#a5b4fc':'rgba(255,255,255,0.45)',
+                display:'flex',alignItems:'center',gap:10,width:'100%',
+                padding:'9px 12px',marginBottom:2,borderRadius:10,border:'none',
+                background:active?'rgba(255,255,255,0.12)':'transparent',
+                color:active?'white':'rgba(255,255,255,0.55)',
                 cursor:'pointer',fontSize:13,fontWeight:active?600:400,
-                textAlign:'left',width:'100%',marginBottom:2,position:'relative'}}>
-                {active&&<div style={{position:'absolute',left:0,top:'20%',bottom:'20%',
-                  width:3,background:'#6366f1',borderRadius:'0 3px 3px 0'}}/>}
-                <div style={{width:28,height:28,borderRadius:8,
-                  background:active?'#6366f1':'rgba(255,255,255,0.07)',
-                  display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <i className={`ti ${n.icon}`} style={{fontSize:14}} aria-hidden/>
-                </div>
+                fontFamily:F,textAlign:'left',
+                transition:'all 0.15s',
+                borderLeft:active?'3px solid #60A5FA':'3px solid transparent'}}>
+                <i className={`ti ${n.icon}`} style={{fontSize:16,flexShrink:0,
+                  color:active?'#60A5FA':'rgba(255,255,255,0.45)'}} aria-hidden/>
                 {n.label}
               </button>
             );
           })}
-
-          {/* Team */}
-          <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',
-              letterSpacing:'0.08em',padding:'0 4px',marginBottom:6}}>Team</div>
-            {team.map(m=>(
-              <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 4px',marginBottom:2}}>
-                <div style={{width:20,height:20,borderRadius:'50%',background:m.color+'30',
-                  border:`2px solid ${m.color}50`,display:'flex',alignItems:'center',
-                  justifyContent:'center',fontSize:'8px',fontWeight:700,color:m.color,flexShrink:0}}>
-                  {ini(m.name)}
-                </div>
-                <span style={{color:'rgba(255,255,255,0.4)',fontSize:11,overflow:'hidden',
-                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.name}</span>
-              </div>
-            ))}
-          </div>
-
-        </div>{/* end scrollable middle */}
-
-        {/* Logout — fixed at bottom, ALWAYS visible */}
-        <div style={{flexShrink:0,padding:'10px 12px 16px',
-          borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-          <button onClick={logout} style={{display:'flex',alignItems:'center',gap:10,
-            width:'100%',padding:'8px 10px',borderRadius:10,border:'none',
-            background:'rgba(239,68,68,0.12)',color:'#fca5a5',cursor:'pointer',
-            fontSize:13,fontWeight:500,fontFamily:F}}>
-            <div style={{width:28,height:28,borderRadius:8,background:'rgba(239,68,68,0.15)',
-              display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <i className="ti ti-logout" style={{fontSize:14}}/>
-            </div>
+        </nav>
+        {/* Settings + Logout */}
+        <div style={{padding:'10px',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <button onClick={()=>setPage('settings')} style={{
+            display:'flex',alignItems:'center',gap:10,width:'100%',
+            padding:'9px 12px',borderRadius:10,border:'none',
+            background:page==='settings'?'rgba(255,255,255,0.12)':'transparent',
+            color:page==='settings'?'white':'rgba(255,255,255,0.55)',
+            cursor:'pointer',fontSize:13,fontWeight:page==='settings'?600:400,
+            fontFamily:F,marginBottom:4,
+            borderLeft:page==='settings'?'3px solid #60A5FA':'3px solid transparent'}}>
+            <i className="ti ti-settings" style={{fontSize:16,
+              color:page==='settings'?'#60A5FA':'rgba(255,255,255,0.45)'}} aria-hidden/>
+            Settings
+          </button>
+          <button onClick={logout} style={{
+            display:'flex',alignItems:'center',gap:10,width:'100%',
+            padding:'9px 12px',borderRadius:10,border:'none',background:'transparent',
+            color:'rgba(255,255,255,0.45)',cursor:'pointer',fontSize:13,
+            fontFamily:F,borderLeft:'3px solid transparent'}}>
+            <i className="ti ti-logout" style={{fontSize:16,color:'rgba(255,255,255,0.35)'}} aria-hidden/>
             Log out
           </button>
         </div>
-
       </div>
 
       {/* ── Content ── */}
@@ -517,8 +499,8 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
         <Card style={{padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
             <span style={{fontSize:14,fontWeight:700,color:TXT}}>Team's ongoing tasks</span>
-            <button onClick={()=>setPage('tasks')} style={{background:'#EEEEFF',border:'none',
-              cursor:'pointer',fontSize:12,color:'#6366f1',fontWeight:600,padding:'5px 12px',
+            <button onClick={()=>setPage('tasks')} style={{background:'#DBEAFE',border:'none',
+              cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
               borderRadius:8,fontFamily:F}}>View tasks →</button>
           </div>
           {mStats.map(m=>(
@@ -533,10 +515,10 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
                   </span>
                 </div>
                 <div style={{display:'flex',gap:2,height:6,borderRadius:3,
-                  overflow:'hidden',background:'#EEF1F9'}}>
-                  {m.total===0&&<div style={{flex:1,background:'#EEF1F9'}}/>}
+                  overflow:'hidden',background:'#EFF4F8'}}>
+                  {m.total===0&&<div style={{flex:1,background:'#EFF4F8'}}/>}
                   {m.todo>0&&   <div style={{flex:m.todo,  background:'#CBD5E1'}}/>}
-                  {m.ip>0&&     <div style={{flex:m.ip,    background:'#6366f1'}}/>}
+                  {m.ip>0&&     <div style={{flex:m.ip,    background:'#2563EB'}}/>}
                   {m.review>0&& <div style={{flex:m.review,background:'#f59e0b'}}/>}
                 </div>
               </div>
@@ -544,7 +526,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
           ))}
           <div style={{display:'flex',gap:14,marginTop:12,paddingTop:12,
             borderTop:`1px solid ${TBORDER}`}}>
-            {[['#CBD5E1','To Do'],['#6366f1','In Progress'],['#f59e0b','Review']].map(([c,l])=>(
+            {[['#CBD5E1','To Do'],['#2563EB','In Progress'],['#f59e0b','Review']].map(([c,l])=>(
               <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
                 <div style={{width:8,height:8,borderRadius:2,background:c}}/>
                 <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{l}</span>
@@ -557,8 +539,8 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
         <Card style={{padding:'18px 20px',overflow:'auto',maxHeight:340}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <span style={{fontSize:14,fontWeight:700,color:TXT}}>KPI overview</span>
-            <button onClick={()=>setPage('kpis')} style={{background:'#EEEEFF',border:'none',
-              cursor:'pointer',fontSize:12,color:'#6366f1',fontWeight:600,padding:'5px 12px',
+            <button onClick={()=>setPage('kpis')} style={{background:'#DBEAFE',border:'none',
+              cursor:'pointer',fontSize:12,color:'#2563EB',fontWeight:600,padding:'5px 12px',
               borderRadius:8,fontFamily:F}}>View →</button>
           </div>
           {eKpiSummary.map(({e,kpis:ek})=>{
@@ -576,15 +558,15 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
                 {ek.map(k=>(
                   <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,
                     padding:'4px 8px',borderRadius:7,marginBottom:3,
-                    background:k.done?'#F0FDF4':'#F7F8FD',
-                    border:`1px solid ${k.done?'#BBF7D0':BORDER}`}}>
+                    background:k.done?'#F0F9FF':'#F8FAFC',
+                    border:`1px solid ${k.done?'#BAE6FD':BORDER}`}}>
                     <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
-                      background:k.done?'#10b981':'transparent',
-                      border:`1.5px solid ${k.done?'#10b981':'#CBD5E1'}`,
+                      background:k.done?'#0EA5E9':'transparent',
+                      border:`1.5px solid ${k.done?'#0EA5E9':'#CBD5E1'}`,
                       display:'flex',alignItems:'center',justifyContent:'center'}}>
                       {k.done&&<i className="ti ti-check" style={{fontSize:8,color:'white'}} aria-hidden/>}
                     </div>
-                    <span style={{fontSize:11,fontWeight:500,color:k.done?'#047857':TXT,
+                    <span style={{fontSize:11,fontWeight:500,color:k.done?'#0369A1':TXT,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                       {k.title||k.type||'KPI'}
                     </span>
@@ -600,7 +582,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
       <Card style={{padding:'18px 20px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
           <span style={{fontSize:14,fontWeight:700,color:TXT}}>All tasks</span>
-          <span style={{background:'#EEF1F9',color:TXT2,fontSize:11,fontWeight:600,
+          <span style={{background:'#EFF4F8',color:TXT2,fontSize:11,fontWeight:600,
             padding:'3px 10px',borderRadius:99}}>{tasks.length} total</span>
         </div>
         {tasks.length===0&&(
@@ -624,14 +606,14 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
               <span style={{flex:1,fontSize:13,color:TXT,overflow:'hidden',
                 textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</span>
               {t.recurring&&<i className="ti ti-repeat" style={{fontSize:11,color:'#94a3b8'}} aria-hidden/>}
-              {stTotal>0&&<span style={{fontSize:10,color:TXT2,background:'#EEF1F9',
+              {stTotal>0&&<span style={{fontSize:10,color:TXT2,background:'#EFF4F8',
                 padding:'2px 7px',borderRadius:99,fontWeight:600}}>{stDone}/{stTotal}</span>}
               {t.entity&&<Chip label={t.entity} ec={t.entity}/>}
               {/* Due date badge */}
               {t.dueDate&&(
                 <span style={{fontSize:10,fontWeight:600,whiteSpace:'nowrap',
                   padding:'2px 8px',borderRadius:99,
-                  background:od?'#FEE9E9':nearingSoon?'#FEF4DC':'#EEF1F9',
+                  background:od?'#FEE9E9':nearingSoon?'#FEF4DC':'#EFF4F8',
                   color:od?'#dc2626':nearingSoon?'#92400e':TXT2}}>
                   {od?'⚠ Overdue':nearingSoon?`Due in ${daysUntil}d`:t.dueDate}
                 </span>
@@ -643,7 +625,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
         })}
         {sortedTasks.length>10&&(
           <button onClick={()=>setPage('tasks')} style={{marginTop:10,background:'none',border:'none',
-            cursor:'pointer',color:'#6366f1',fontSize:12,fontWeight:600,fontFamily:F,padding:'4px 0'}}>
+            cursor:'pointer',color:'#2563EB',fontSize:12,fontWeight:600,fontFamily:F,padding:'4px 0'}}>
             View all {sortedTasks.length} tasks →
           </button>
         )}
@@ -720,10 +702,10 @@ function TasksPage({team,tasks,saveTasks}) {
                         <div style={{marginBottom:10}} onClick={e=>e.stopPropagation()}>
                           <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
                             <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Milestones</span>
-                            <span style={{fontSize:10,color:stDone===stTotal?'#10b981':TXT2,fontWeight:stDone===stTotal?700:500}}>{stDone}/{stTotal}</span>
+                            <span style={{fontSize:10,color:stDone===stTotal?'#0EA5E9':TXT2,fontWeight:stDone===stTotal?700:500}}>{stDone}/{stTotal}</span>
                           </div>
-                          <div style={{height:4,borderRadius:2,background:'#EEF1F9',overflow:'hidden',marginBottom:6}}>
-                            <div style={{width:`${stPct}%`,height:'100%',background:stDone===stTotal?'#10b981':ec.a,borderRadius:2}}/>
+                          <div style={{height:4,borderRadius:2,background:'#EFF4F8',overflow:'hidden',marginBottom:6}}>
+                            <div style={{width:`${stPct}%`,height:'100%',background:stDone===stTotal?'#0EA5E9':ec.a,borderRadius:2}}/>
                           </div>
                           {(t.subtasks||[]).map(sub=>(
                             <div key={sub.id} onClick={e=>{e.stopPropagation();toggleSub(t.id,sub.id);}}
@@ -783,7 +765,7 @@ function TasksPage({team,tasks,saveTasks}) {
                               onClick={e=>{e.stopPropagation();setCardLightbox(img);}}/>
                           ))}
                           {(t.images||[]).length>3&&(
-                            <div style={{width:44,height:44,borderRadius:7,background:'#EEF1F9',
+                            <div style={{width:44,height:44,borderRadius:7,background:'#EFF4F8',
                               border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',
                               justifyContent:'center',fontSize:11,fontWeight:600,color:TXT2}}>
                               +{(t.images||[]).length-3}
@@ -949,16 +931,16 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
       <div style={{borderTop:`1px solid ${TBORDER}`,paddingTop:16,marginTop:4}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
           <span style={{fontSize:12,fontWeight:700,color:TXT,textTransform:'uppercase',letterSpacing:'0.05em'}}>Milestones / Sub-tasks</span>
-          {f.subtasks.length>0&&<span style={{fontSize:11,color:stDone===f.subtasks.length&&f.subtasks.length>0?'#10b981':TXT2,fontWeight:600}}>{stDone}/{f.subtasks.length} done</span>}
+          {f.subtasks.length>0&&<span style={{fontSize:11,color:stDone===f.subtasks.length&&f.subtasks.length>0?'#0EA5E9':TXT2,fontWeight:600}}>{stDone}/{f.subtasks.length} done</span>}
         </div>
         {f.subtasks.length>0&&(
           <div style={{marginBottom:10,display:'flex',flexDirection:'column',gap:4}}>
             {f.subtasks.map((st,i)=>(
               <div key={st.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
-                borderRadius:9,background:st.done?'#F0FDF4':'#F7F8FD',
-                border:`1px solid ${st.done?'#BBF7D0':BORDER}`}}>
+                borderRadius:9,background:st.done?'#F0F9FF':'#F8FAFC',
+                border:`1px solid ${st.done?'#BAE6FD':BORDER}`}}>
                 <div onClick={()=>toggleSub(st.id)} style={{width:16,height:16,borderRadius:4,
-                  border:`1.5px solid ${st.done?'#10b981':BORDER}`,background:st.done?'#10b981':'transparent',
+                  border:`1.5px solid ${st.done?'#0EA5E9':BORDER}`,background:st.done?'#0EA5E9':'transparent',
                   display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}>
                   {st.done&&<i className="ti ti-check" style={{fontSize:10,color:'white'}} aria-hidden/>}
                 </div>
@@ -981,7 +963,7 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           <Inp value={newSt} onChange={e=>setNewSt(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addSub())}
             placeholder="Add a milestone or sub-task…" style={{fontSize:12}}/>
-          <button onClick={addSub} style={{background:'#6366f1',color:'white',border:'none',
+          <button onClick={addSub} style={{background:'#2563EB',color:'white',border:'none',
             cursor:'pointer',padding:'8px 14px',borderRadius:9,fontSize:12,fontFamily:F,fontWeight:600,whiteSpace:'nowrap'}}>
             + Add
           </button>
@@ -1005,7 +987,7 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
               const label=link.label||getDomain(link.url);
               return (
                 <div key={link.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
-                  borderRadius:9,background:'#F7F8FD',border:`1px solid ${BORDER}`}}>
+                  borderRadius:9,background:'#F8FAFC',border:`1px solid ${BORDER}`}}>
                   <div style={{width:24,height:24,borderRadius:6,background:c+'18',
                     display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                     <i className="ti ti-link" style={{fontSize:12,color:c}}/>
@@ -1039,7 +1021,7 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
             <Inp value={newLinkLabel} onChange={e=>setNewLinkLabel(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addLink())}
               placeholder="Label (optional, e.g. Campaign Brief)" style={{fontSize:12}}/>
-            <button onClick={addLink} style={{background:'#6366f1',color:'white',border:'none',
+            <button onClick={addLink} style={{background:'#2563EB',color:'white',border:'none',
               cursor:'pointer',padding:'8px 14px',borderRadius:9,fontSize:12,
               fontFamily:F,fontWeight:600,whiteSpace:'nowrap'}}>
               + Add
@@ -1064,7 +1046,7 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
             {(f.images||[]).map(img=>(
               <div key={img.id} style={{position:'relative',aspectRatio:'1',borderRadius:10,overflow:'hidden',
-                background:'#EEF1F9',border:`1px solid ${BORDER}`}}>
+                background:'#EFF4F8',border:`1px solid ${BORDER}`}}>
                 <img src={img.data} alt={img.name}
                   style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}
                   onClick={()=>setLightbox(img)}/>
@@ -1085,9 +1067,9 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
           padding:'18px',borderRadius:10,border:`2px dashed ${BORDER}`,cursor:'pointer',
           background:'#FAFBFF'}}>
           <input type="file" accept="image/*" multiple onChange={handleImages} style={{display:'none'}}/>
-          <div style={{width:36,height:36,borderRadius:10,background:'#EEEEFF',
+          <div style={{width:36,height:36,borderRadius:10,background:'#DBEAFE',
             display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <i className="ti ti-photo" style={{fontSize:18,color:'#6366f1'}}/>
+            <i className="ti ti-photo" style={{fontSize:18,color:'#2563EB'}}/>
           </div>
           <div style={{textAlign:'center'}}>
             <div style={{fontSize:13,fontWeight:600,color:TXT}}>Click to add photos or screenshots</div>
@@ -1176,14 +1158,14 @@ function KpisPage({team,kpis,saveKpis,fy}) {
 
       {ek.length===0?(
         <Card style={{padding:'48px',textAlign:'center'}}>
-          <div style={{width:48,height:48,borderRadius:14,background:'#EEF1F9',
+          <div style={{width:48,height:48,borderRadius:14,background:'#EFF4F8',
             display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}>
             <i className="ti ti-target" style={{fontSize:22,color:TXT2}} aria-hidden/>
           </div>
           <p style={{color:TXT2,fontSize:14,margin:'0 0 12px'}}>
             No KPIs set for {entity} yet.
           </p>
-          <button onClick={()=>setModal('add')} style={{background:'#6366f1',color:'white',
+          <button onClick={()=>setModal('add')} style={{background:'#2563EB',color:'white',
             border:'none',cursor:'pointer',padding:'8px 20px',borderRadius:10,
             fontSize:13,fontWeight:600,fontFamily:F}}>+ Add first KPI</button>
         </Card>
@@ -1191,10 +1173,10 @@ function KpisPage({team,kpis,saveKpis,fy}) {
         <>
           {/* Progress summary */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-            <div style={{flex:1,height:6,borderRadius:3,background:'#EEF1F9',overflow:'hidden'}}>
+            <div style={{flex:1,height:6,borderRadius:3,background:'#EFF4F8',overflow:'hidden'}}>
               <div style={{
                 width:`${ek.length>0?(doneCount/ek.length)*100:0}%`,
-                height:'100%',background:(EC[entity]||{a:'#6366f1'}).a,
+                height:'100%',background:(EC[entity]||{a:'#2563EB'}).a,
                 borderRadius:3,transition:'width 0.3s'}}/>
             </div>
             <span style={{fontSize:12,color:TXT2,fontWeight:600,whiteSpace:'nowrap'}}>
@@ -1205,19 +1187,19 @@ function KpisPage({team,kpis,saveKpis,fy}) {
           {/* KPI list */}
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {ek.map(k=>{
-              const {a}=EC[k.entity]||{a:'#6366f1'};
+              const {a}=EC[k.entity]||{a:'#2563EB'};
               const m=team.find(x=>x.id===k.assigneeId);
               return (
                 <Card key={k.id} style={{padding:'14px 18px',
-                  border:`1.5px solid ${k.done?'#BBF7D0':BORDER}`,
-                  background:k.done?'#F0FDF4':CARD}}>
+                  border:`1.5px solid ${k.done?'#BAE6FD':BORDER}`,
+                  background:k.done?'#F0F9FF':CARD}}>
                   <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
                     {/* Done toggle */}
                     <div onClick={()=>toggleDone(k.id)}
                       style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
                         cursor:'pointer',marginTop:1,
-                        border:`2px solid ${k.done?'#10b981':BORDER}`,
-                        background:k.done?'#10b981':'transparent',
+                        border:`2px solid ${k.done?'#0EA5E9':BORDER}`,
+                        background:k.done?'#0EA5E9':'transparent',
                         display:'flex',alignItems:'center',justifyContent:'center',
                         transition:'all 0.15s'}}>
                       {k.done&&<i className="ti ti-check" style={{fontSize:11,color:'white'}} aria-hidden/>}
@@ -1226,7 +1208,7 @@ function KpisPage({team,kpis,saveKpis,fy}) {
                     {/* Content */}
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{margin:'0 0 4px',fontSize:14,fontWeight:600,
-                        color:k.done?'#047857':TXT,
+                        color:k.done?'#0369A1':TXT,
                         textDecoration:k.done?'line-through':'none',
                         lineHeight:1.4}}>
                         {k.title||k.type||'Untitled KPI'}
@@ -1244,7 +1226,7 @@ function KpisPage({team,kpis,saveKpis,fy}) {
                           </div>
                         )}
                         {k.done&&(
-                          <span style={{fontSize:11,color:'#10b981',fontWeight:600}}>
+                          <span style={{fontSize:11,color:'#0EA5E9',fontWeight:600}}>
                             ✓ Achieved
                           </span>
                         )}
@@ -1253,7 +1235,7 @@ function KpisPage({team,kpis,saveKpis,fy}) {
 
                     {/* Edit button */}
                     <button onClick={()=>setModal({edit:k})}
-                      style={{background:'#EEF1F9',border:'none',cursor:'pointer',
+                      style={{background:'#EFF4F8',border:'none',cursor:'pointer',
                         color:TXT2,padding:'4px 10px',borderRadius:7,
                         fontSize:11,fontWeight:600,fontFamily:F,flexShrink:0}}>
                       Edit
@@ -1308,15 +1290,15 @@ function KpiModal({title,kpi,entity,onClose,onSave,onDelete,team}) {
         <div onClick={()=>s('done',!f.done)}
           style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',
             padding:'10px 14px',borderRadius:10,marginBottom:4,
-            background:f.done?'#F0FDF4':'#F7F8FD',
-            border:`1px solid ${f.done?'#BBF7D0':BORDER}`}}>
+            background:f.done?'#F0F9FF':'#F8FAFC',
+            border:`1px solid ${f.done?'#BAE6FD':BORDER}`}}>
           <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,
-            border:`2px solid ${f.done?'#10b981':BORDER}`,
-            background:f.done?'#10b981':'transparent',
+            border:`2px solid ${f.done?'#0EA5E9':BORDER}`,
+            background:f.done?'#0EA5E9':'transparent',
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             {f.done&&<i className="ti ti-check" style={{fontSize:11,color:'white'}} aria-hidden/>}
           </div>
-          <span style={{fontSize:13,fontWeight:500,color:f.done?'#047857':TXT}}>
+          <span style={{fontSize:13,fontWeight:500,color:f.done?'#0369A1':TXT}}>
             {f.done?'Achieved ✓':'Mark as achieved'}
           </span>
         </div>
@@ -1367,7 +1349,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
   });
   const hasAnyBudget=fyTotBudget>0;
 
-  const CAT_COLORS=['#6366f1','#0891b2','#10b981','#f59e0b'];
+  const CAT_COLORS=['#2563EB','#0891b2','#0EA5E9','#f59e0b'];
 
   return (
     <div>
@@ -1375,9 +1357,9 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
       <div style={{display:'flex',gap:6,marginBottom:20}}>
         {[['expenses','Expenses'],['leads','Leads & CPL']].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 20px',fontSize:13,fontWeight:tab===id?700:500,
-            border:`1.5px solid ${tab===id?'#6366f1':BORDER}`,borderRadius:99,
-            background:tab===id?'#6366f1':CARD,cursor:'pointer',color:tab===id?'white':TXT2,
-            fontFamily:F,boxShadow:tab===id?'0 2px 8px rgba(99,102,241,0.3)':'none'}}>{label}</button>
+            border:`1.5px solid ${tab===id?'#2563EB':BORDER}`,borderRadius:99,
+            background:tab===id?'#2563EB':CARD,cursor:'pointer',color:tab===id?'white':TXT2,
+            fontFamily:F,boxShadow:tab===id?'0 2px 8px rgba(37,99,235,0.3)':'none'}}>{label}</button>
         ))}
       </div>
 
@@ -1402,11 +1384,11 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                     <div style={{marginTop:6}}>
                       <div style={{fontSize:10,color:TXT2}}>Budget: ${budget.toLocaleString()}</div>
                       {vPct!==null&&actual>0&&(
-                        <div style={{fontSize:11,fontWeight:700,marginTop:2,color:vPct>0?'#ef4444':'#10b981'}}>
+                        <div style={{fontSize:11,fontWeight:700,marginTop:2,color:vPct>0?'#ef4444':'#0EA5E9'}}>
                           {vPct>0?`▲${vPct}% over`:`▼${Math.abs(vPct)}% under`} budget
                         </div>
                       )}
-                      <div style={{height:4,borderRadius:2,background:'#EEF1F9',overflow:'hidden',marginTop:6}}>
+                      <div style={{height:4,borderRadius:2,background:'#EFF4F8',overflow:'hidden',marginTop:6}}>
                         <div style={{width:`${Math.min(100,budget>0?(actual/budget)*100:0)}%`,
                           height:'100%',background:vPct>0?'#ef4444':CAT_COLORS[i],borderRadius:2}}/>
                       </div>
@@ -1425,15 +1407,15 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
               </div>
               <ResponsiveContainer width="100%" height={240}>
                 <ComposedChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EFF4F8"/>
                   <XAxis dataKey="month" tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}/>
                   <YAxis tick={{fontSize:11,fill:TXT2}} axisLine={false} tickLine={false}
                     tickFormatter={v=>v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`}/>
                   <Tooltip formatter={(v,n)=>[`$${Number(v).toLocaleString()}`,n]}
                     contentStyle={{borderRadius:10,border:`1px solid ${BORDER}`,fontSize:12,fontFamily:F}}/>
                   <Legend wrapperStyle={{fontSize:12,fontFamily:F,paddingTop:8}}/>
-                  <Bar dataKey="Monthly Budget" fill="#E5E9F5" radius={[4,4,0,0]}/>
-                  <Bar dataKey="Monthly Actual" fill="#6366f1" radius={[4,4,0,0]}/>
+                  <Bar dataKey="Monthly Budget" fill="#E2E8F0" radius={[4,4,0,0]}/>
+                  <Bar dataKey="Monthly Actual" fill="#2563EB" radius={[4,4,0,0]}/>
                   <Line type="monotone" dataKey="Cumulative Budget" stroke="#94a3b8"
                     strokeWidth={2} strokeDasharray="5 4" dot={false}/>
                   <Line type="monotone" dataKey="Cumulative Actual" stroke="#f59e0b"
@@ -1477,31 +1459,31 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                               {budget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${Number(budget).toLocaleString()}</div>}
                               {vPct!==null&&actual>0&&(
                                 <div style={{fontSize:10,fontWeight:700,marginTop:1,
-                                  color:vPct>0?'#ef4444':'#10b981'}}>
+                                  color:vPct>0?'#ef4444':'#0EA5E9'}}>
                                   {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
                                 </div>
                               )}
                             </td>
                           );
                         })}
-                        <td style={{...TD,fontWeight:700,color:'#6366f1'}}>
+                        <td style={{...TD,fontWeight:700,color:'#2563EB'}}>
                           <div>{totActual>0?`$${totActual.toLocaleString()}`:'—'}</div>
                           {totBudget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${totBudget.toLocaleString()}</div>}
                           {totV!==null&&totActual>0&&(
                             <div style={{fontSize:10,fontWeight:700,marginTop:1,
-                              color:totV>0?'#ef4444':'#10b981'}}>
+                              color:totV>0?'#ef4444':'#0EA5E9'}}>
                               {totV>0?`▲${totV}%`:`▼${Math.abs(totV)}%`}
                             </div>
                           )}
                         </td>
                         <td style={TD}>
                           <button onClick={()=>{setExpF(r);setExpEdit(key);}}
-                            style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                            style={{background:'#DBEAFE',color:'#2563EB',border:'none',cursor:'pointer',
                               padding:'4px 10px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F,marginBottom:4,display:'block'}}>
                             Edit actual
                           </button>
                           <button onClick={()=>{setBudgetF(b);setBudEdit(key);}}
-                            style={{background:'#E0F7EF',color:'#047857',border:'none',cursor:'pointer',
+                            style={{background:'#E0F2FE',color:'#0369A1',border:'none',cursor:'pointer',
                               padding:'4px 10px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F,display:'block'}}>
                             Edit budget
                           </button>
@@ -1511,7 +1493,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                     );
                   })}
                   {/* FY totals row */}
-                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                  <tr style={{background:'#F8FAFC',borderTop:`2px solid ${BORDER}`}}>
                     <td style={{...TD,fontWeight:700}}>FY Total</td>
                     {EXP_CATS.map(c=>{
                       const actual=fyMths.reduce((s,{key})=>s+(+((expenses[key]||{})[c])||0),0);
@@ -1522,20 +1504,20 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                           <div style={{fontWeight:700}}>{actual>0?`$${actual.toLocaleString()}`:'—'}</div>
                           {budget>0&&<div style={{fontSize:10,color:TXT2,marginTop:1}}>Budget: ${budget.toLocaleString()}</div>}
                           {vPct!==null&&actual>0&&(
-                            <div style={{fontSize:10,fontWeight:700,marginTop:1,color:vPct>0?'#ef4444':'#10b981'}}>
+                            <div style={{fontSize:10,fontWeight:700,marginTop:1,color:vPct>0?'#ef4444':'#0EA5E9'}}>
                               {vPct>0?`▲${vPct}%`:`▼${Math.abs(vPct)}%`}
                             </div>
                           )}
                         </td>
                       );
                     })}
-                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>
+                    <td style={{...TD,fontWeight:700,color:'#2563EB',fontSize:14}}>
                       <div>{fyTotExp>0?`$${fyTotExp.toLocaleString()}`:'—'}</div>
                       {fyTotBudget>0&&<div style={{fontSize:11,color:TXT2,marginTop:1}}>Budget: ${fyTotBudget.toLocaleString()}</div>}
                       {fyTotBudget>0&&fyTotExp>0&&(()=>{
                         const vPct=variance(fyTotExp,fyTotBudget);
                         return vPct!==null?<div style={{fontSize:11,fontWeight:700,marginTop:1,
-                          color:vPct>0?'#ef4444':'#10b981'}}>
+                          color:vPct>0?'#ef4444':'#0EA5E9'}}>
                           {vPct>0?`▲${vPct}% over`:`▼${Math.abs(vPct)}% under`}
                         </div>:null;
                       })()}
@@ -1553,9 +1535,9 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
       {tab==='leads'&&(
         <>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
-            {[{l:'FY leads',v:fyTotLeads||'—',i:'ti-users',c:'#6366f1',bg:'#EEEEFF'},
+            {[{l:'FY leads',v:fyTotLeads||'—',i:'ti-users',c:'#2563EB',bg:'#DBEAFE'},
               {l:'Lead gen spend',v:fyLeadGenExp?`$${fyLeadGenExp.toLocaleString()}`:'—',i:'ti-cash',c:'#0891b2',bg:'#E0F5FB'},
-              {l:'FY cost/lead',v:fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#10b981',bg:'#E0F7EF'},
+              {l:'FY cost/lead',v:fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—',i:'ti-coin',c:'#0EA5E9',bg:'#E0F2FE'},
               {l:'Avg leads/month',v:fyTotLeads>0&&monthsWithLeads>0?Math.round(fyTotLeads/monthsWithLeads):'—',i:'ti-chart-line',c:'#f59e0b',bg:'#FEF4DC'},
             ].map(({l,v,i,c,bg})=>(
               <Card key={l} style={{padding:'16px'}}>
@@ -1575,7 +1557,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                   {LEAD_SRCS.map(s=><th key={s} style={TH}>{s}</th>)}
                   <th style={TH}>Total leads</th>
                   <th style={TH}>Lead Gen Spend</th>
-                  <th style={{...TH,color:'#6366f1'}}>CPL</th>
+                  <th style={{...TH,color:'#2563EB'}}>CPL</th>
                   <th style={TH}/>
                 </tr></thead>
                 <tbody>
@@ -1590,19 +1572,19 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
                         {LEAD_SRCS.map(r=><td key={r} style={TD}>{lr[r]?Number(lr[r]).toLocaleString():'—'}</td>)}
                         <td style={{...TD,fontWeight:700}}>{totL>0?totL.toLocaleString():'—'}</td>
                         <td style={TD}>{leadGenSpend>0?`$${leadGenSpend.toLocaleString()}`:'—'}</td>
-                        <td style={{...TD,fontWeight:700,color:cpl?'#6366f1':TXT2}}>{cpl?`$${cpl}`:'—'}</td>
+                        <td style={{...TD,fontWeight:700,color:cpl?'#2563EB':TXT2}}>{cpl?`$${cpl}`:'—'}</td>
                         <td style={TD}><button onClick={()=>{setLeadF(lr);setLead(key);}}
-                          style={{background:'#EEEEFF',color:'#6366f1',border:'none',cursor:'pointer',
+                          style={{background:'#DBEAFE',color:'#2563EB',border:'none',cursor:'pointer',
                             padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button></td>
                       </tr>
                     );
                   })}
-                  <tr style={{background:'#F7F8FD',borderTop:`2px solid ${BORDER}`}}>
+                  <tr style={{background:'#F8FAFC',borderTop:`2px solid ${BORDER}`}}>
                     <td style={{...TD,fontWeight:700}}>FY Total</td>
                     {LEAD_SRCS.map(r=>{const tot=fyMths.reduce((s,{key})=>s+(+((leads[key]||{})[r])||0),0);return<td key={r} style={{...TD,fontWeight:700}}>{tot>0?tot.toLocaleString():'—'}</td>;})}
                     <td style={{...TD,fontWeight:700}}>{fyTotLeads>0?fyTotLeads.toLocaleString():'—'}</td>
                     <td style={{...TD,fontWeight:700}}>{fyLeadGenExp>0?`$${fyLeadGenExp.toLocaleString()}`:'—'}</td>
-                    <td style={{...TD,fontWeight:700,color:'#6366f1',fontSize:14}}>{fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—'}</td>
+                    <td style={{...TD,fontWeight:700,color:'#2563EB',fontSize:14}}>{fyTotLeads>0&&fyLeadGenExp>0?`$${(fyLeadGenExp/fyTotLeads).toFixed(2)}`:'—'}</td>
                     <td style={TD}/>
                   </tr>
                 </tbody>
@@ -1617,7 +1599,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
         <Modal title={`Actual spend — ${fyMths.find(m=>m.key===expEdit)?.label} ${expEdit?.slice(0,4)}`} onClose={()=>setExpEdit(null)}>
           <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter monthly actual spend per category</p>
           {EXP_CATS.map(c=><Lbl key={c} s={c}><Inp type="number" value={expF[c]||''} onChange={e=>setExpF(f=>({...f,[c]:e.target.value}))} placeholder="0"/></Lbl>)}
-          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+          <div style={{background:'#F8FAFC',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
             <span style={{fontSize:12,color:TXT2}}>Total: </span>
             <span style={{fontSize:15,fontWeight:700,color:TXT}}>${EXP_CATS.reduce((s,c)=>s+(+expF[c]||0),0).toLocaleString()}</span>
           </div>
@@ -1633,7 +1615,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
         <Modal title={`Budget — ${fyMths.find(m=>m.key===budgetEdit)?.label} ${budgetEdit?.slice(0,4)}`} onClose={()=>setBudEdit(null)}>
           <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter the budgeted amount per category for this month</p>
           {EXP_CATS.map(c=><Lbl key={c} s={c}><Inp type="number" value={budgetF[c]||''} onChange={e=>setBudgetF(f=>({...f,[c]:e.target.value}))} placeholder="0"/></Lbl>)}
-          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+          <div style={{background:'#F8FAFC',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
             <span style={{fontSize:12,color:TXT2}}>Total budget: </span>
             <span style={{fontSize:15,fontWeight:700,color:TXT}}>${EXP_CATS.reduce((s,c)=>s+(+budgetF[c]||0),0).toLocaleString()}</span>
           </div>
@@ -1649,7 +1631,7 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
         <Modal title={`Leads — ${fyMths.find(m=>m.key===leadEdit)?.label} ${leadEdit?.slice(0,4)}`} onClose={()=>setLead(null)}>
           <p style={{fontSize:13,color:TXT2,margin:'0 0 16px'}}>Enter lead counts by source type</p>
           {LEAD_SRCS.map(r=><Lbl key={r} s={`${r} leads`}><Inp type="number" value={leadF[r]||''} onChange={e=>setLeadF(f=>({...f,[r]:e.target.value}))} placeholder="0"/></Lbl>)}
-          <div style={{background:'#F7F8FD',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
+          <div style={{background:'#F8FAFC',borderRadius:10,padding:'12px 14px',marginBottom:16,border:`1px solid ${BORDER}`}}>
             <span style={{fontSize:12,color:TXT2}}>Total leads: </span>
             <span style={{fontSize:15,fontWeight:700,color:TXT}}>{LEAD_SRCS.reduce((s,r)=>s+(+leadF[r]||0),0).toLocaleString()}</span>
           </div>
@@ -1750,7 +1732,7 @@ function CalendarPage({team,tasks,events,saveEvents}) {
           <i className="ti ti-chevron-right" style={{fontSize:15}}/>
         </button>
         <button onClick={()=>setCur(new Date())} style={{
-          background:'#EEEEFF',border:'none',cursor:'pointer',color:'#6366f1',
+          background:'#DBEAFE',border:'none',cursor:'pointer',color:'#2563EB',
           padding:'6px 14px',borderRadius:9,fontSize:12,fontWeight:600,fontFamily:F}}>
           Today
         </button>
@@ -1818,7 +1800,7 @@ function CalendarPage({team,tasks,events,saveEvents}) {
                   </span>
                   <span style={{
                     width:22,height:22,borderRadius:'50%',flexShrink:0,
-                    background:isToday?'#6366f1':'transparent',
+                    background:isToday?'#2563EB':'transparent',
                     color:isToday?'white':cell.cur?TXT:'#CBD5E1',
                     fontSize:11,fontWeight:isToday?700:cell.cur?500:400,
                     display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -1850,7 +1832,7 @@ function CalendarPage({team,tasks,events,saveEvents}) {
                     const od=item.status!=='Done'&&key<todayKey;
                     return (
                       <div key={item.id+key}
-                        style={{background:od?'#ef4444':done?'#10b981':c,
+                        style={{background:od?'#ef4444':done?'#0EA5E9':c,
                           color:'white',fontSize:10,fontWeight:600,padding:'2px 6px',
                           borderRadius:4,marginBottom:2,
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
@@ -1897,7 +1879,7 @@ function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
     notes:event?.notes||'',
   });
   const s=(k,v)=>setF(x=>({...x,[k]:v}));
-  const {color}=EVENT_TYPES[f.type]||{color:'#6366f1'};
+  const {color}=EVENT_TYPES[f.type]||{color:'#2563EB'};
   return (
     <Modal title={event?'Edit event':'New event'} onClose={onClose}>
       <Lbl s="Event title">
@@ -2105,12 +2087,12 @@ function ImportModal({type,onClose,onImport}){
   return (
     <Modal title={`Import ${isLead?'Marketing Leads':'Closed Customers'} from Excel`} onClose={onClose} wide>
 
-      <div style={{background:'#EEF1F9',borderRadius:10,padding:'12px 14px',marginBottom:16,
+      <div style={{background:'#EFF4F8',borderRadius:10,padding:'12px 14px',marginBottom:16,
         fontSize:12,color:TXT2,lineHeight:1.7}}>
         <strong style={{color:TXT}}>Accepted formats:</strong> .xlsx · .xls · .csv<br/>
         <strong style={{color:TXT}}>First row must be the header row.</strong> Column order doesn't matter — columns are auto-detected.<br/>
         <strong style={{color:TXT}}>Expected columns:</strong><br/>
-        <span style={{fontFamily:'monospace',fontSize:10,color:'#6366f1'}}>
+        <span style={{fontFamily:'monospace',fontSize:10,color:'#2563EB'}}>
           {isLead
             ?'No. MTH · LEADS DATE · SOURCES OF LEADS · CONTACT NAME · COMPANY/PERSONAL NAME · EMAIL ADDRESS · PHONE · REPEAT HP · MORE THAN 1 · HOW MANY · PRIMARY USE · DURATION OF LEASE · SHORT / LONG TERMS · DESIRED VEHICLE · ADDITIONAL INFO · SALES REP'
             :'St · Rental Contract · Item S/N · Vehicle (New/Used) · Contract Count · Month · Period Rent Term · Rate · Total Rate · AgmtDate · StartDate · SchEnd · SALESMAN · Client Name · Make · Model · Contract · Customer'}
@@ -2127,17 +2109,17 @@ function ImportModal({type,onClose,onImport}){
           <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
           {loading?(
             <>
-              <div style={{width:48,height:48,borderRadius:14,background:'#EEEEFF',
+              <div style={{width:48,height:48,borderRadius:14,background:'#DBEAFE',
                 display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <i className="ti ti-loader-2" style={{fontSize:24,color:'#6366f1'}}/>
+                <i className="ti ti-loader-2" style={{fontSize:24,color:'#2563EB'}}/>
               </div>
               <div style={{fontSize:13,color:TXT2}}>Reading file…</div>
             </>
           ):(
             <>
-              <div style={{width:48,height:48,borderRadius:14,background:'#EEEEFF',
+              <div style={{width:48,height:48,borderRadius:14,background:'#DBEAFE',
                 display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <i className="ti ti-file-spreadsheet" style={{fontSize:24,color:'#6366f1'}}/>
+                <i className="ti ti-file-spreadsheet" style={{fontSize:24,color:'#2563EB'}}/>
               </div>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:14,fontWeight:700,color:TXT}}>Click to select your Excel file</div>
@@ -2154,7 +2136,7 @@ function ImportModal({type,onClose,onImport}){
           padding:'10px 14px',marginBottom:14,fontSize:12,color:'#dc2626',fontWeight:500}}>
           ⚠ {error}
           <div style={{marginTop:6}}>
-            <label style={{color:'#6366f1',cursor:'pointer',textDecoration:'underline',fontSize:12}}>
+            <label style={{color:'#2563EB',cursor:'pointer',textDecoration:'underline',fontSize:12}}>
               <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
               Try a different file
             </label>
@@ -2165,18 +2147,18 @@ function ImportModal({type,onClose,onImport}){
       {/* Preview */}
       {preview&&(
         <>
-          <div style={{background:'#E0F7EF',border:'1px solid #BBF7D0',borderRadius:10,
+          <div style={{background:'#E0F2FE',border:'1px solid #BAE6FD',borderRadius:10,
             padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',
             justifyContent:'space-between'}}>
             <div>
-              <span style={{fontSize:13,fontWeight:700,color:'#047857'}}>
+              <span style={{fontSize:13,fontWeight:700,color:'#0369A1'}}>
                 ✓ {preview.total} rows read
               </span>
-              <span style={{fontSize:12,color:'#065f46',marginLeft:8}}>
+              <span style={{fontSize:12,color:'#075985',marginLeft:8}}>
                 across {Object.keys(preview.byMonth).length} month{Object.keys(preview.byMonth).length>1?'s':''}
               </span>
             </div>
-            <label style={{fontSize:11,color:'#6366f1',cursor:'pointer',textDecoration:'underline',fontFamily:F}}>
+            <label style={{fontSize:11,color:'#2563EB',cursor:'pointer',textDecoration:'underline',fontFamily:F}}>
               <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
               Upload different file
             </label>
@@ -2194,10 +2176,10 @@ function ImportModal({type,onClose,onImport}){
                 .map(([mk,rows])=>(
                 <div key={mk} style={{display:'flex',alignItems:'center',gap:8,
                   padding:'6px 12px',borderRadius:8,
-                  background:mk==='unknown'?'#FEF4DC':'#EEEEFF',
+                  background:mk==='unknown'?'#FEF4DC':'#DBEAFE',
                   border:`1px solid ${mk==='unknown'?'#FCD34D':'#C7D2FE'}`}}>
                   <span style={{fontSize:12,fontWeight:700,
-                    color:mk==='unknown'?'#92400e':'#6366f1'}}>
+                    color:mk==='unknown'?'#92400e':'#2563EB'}}>
                     {mk==='unknown'?'⚠ Month not detected':fmtMK(mk)}
                   </span>
                   <span style={{fontSize:11,color:mk==='unknown'?'#b45309':TXT2}}>
@@ -2217,7 +2199,7 @@ function ImportModal({type,onClose,onImport}){
           <div style={{overflowX:'auto',marginBottom:14,maxHeight:220,
             border:`1px solid ${BORDER}`,borderRadius:10}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
-              <thead style={{position:'sticky',top:0,background:'#F7F8FD',zIndex:1}}>
+              <thead style={{position:'sticky',top:0,background:'#F8FAFC',zIndex:1}}>
                 <tr>
                   {previewCols.map(c=>(
                     <th key={c} style={{...TH,padding:'8px 10px',textTransform:'capitalize',whiteSpace:'nowrap'}}>
@@ -2257,16 +2239,16 @@ function ImportModal({type,onClose,onImport}){
               <label key={m} onClick={()=>setMode(m)}
                 style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',
                   padding:'10px 14px',borderRadius:9,flex:1,
-                  border:`1.5px solid ${mode===m?'#6366f1':BORDER}`,
-                  background:mode===m?'#EEEEFF':INBG}}>
+                  border:`1.5px solid ${mode===m?'#2563EB':BORDER}`,
+                  background:mode===m?'#DBEAFE':INBG}}>
                 <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
-                  border:`2px solid ${mode===m?'#6366f1':'#CBD5E1'}`,
-                  background:mode===m?'#6366f1':'transparent',
+                  border:`2px solid ${mode===m?'#2563EB':'#CBD5E1'}`,
+                  background:mode===m?'#2563EB':'transparent',
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {mode===m&&<div style={{width:5,height:5,borderRadius:'50%',background:'white'}}/>}
                 </div>
                 <span style={{fontSize:12,fontWeight:mode===m?600:400,
-                  color:mode===m?'#6366f1':TXT}}>{label}</span>
+                  color:mode===m?'#2563EB':TXT}}>{label}</span>
               </label>
             ))}
           </div>
@@ -2376,7 +2358,7 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
       <span style={{fontSize:13,color:TXT2}}>{count} {label} this month</span>
       <div style={{display:'flex',gap:8}}>
-        <button onClick={onImport} style={{background:'#E0F7EF',color:'#047857',border:'none',
+        <button onClick={onImport} style={{background:'#E0F2FE',color:'#0369A1',border:'none',
           cursor:'pointer',padding:'7px 14px',borderRadius:9,fontSize:12,fontWeight:600,fontFamily:F,
           display:'flex',alignItems:'center',gap:5}}>
           <i className="ti ti-table-import" style={{fontSize:13}}/> Import from Excel
@@ -2405,10 +2387,10 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
         {[['leads','Marketing Leads',mLeads.length],['closed','Closed Customers',mDeals.length],['matching','Matching & Analytics',unconfirmed.length]].map(([id,label,cnt])=>(
           <button key={id} onClick={()=>setTab(id)} style={{
             padding:'8px 18px',fontSize:13,fontWeight:tab===id?700:500,
-            border:`1.5px solid ${tab===id?'#6366f1':BORDER}`,borderRadius:99,
-            background:tab===id?'#6366f1':CARD,cursor:'pointer',
+            border:`1.5px solid ${tab===id?'#2563EB':BORDER}`,borderRadius:99,
+            background:tab===id?'#2563EB':CARD,cursor:'pointer',
             color:tab===id?'white':TXT2,fontFamily:F,
-            boxShadow:tab===id?'0 2px 8px rgba(99,102,241,0.3)':'none',
+            boxShadow:tab===id?'0 2px 8px rgba(37,99,235,0.3)':'none',
             display:'flex',alignItems:'center',gap:6}}>
             {label}
             {cnt>0&&<span style={{background:id==='matching'?'#FEE9E9':'rgba(255,255,255,0.25)',
@@ -2428,11 +2410,11 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
               <i className="ti ti-users" style={{fontSize:32,color:TXT2,display:'block',marginBottom:12}}/>
               <p style={{color:TXT2,fontSize:14,margin:'0 0 16px'}}>No leads yet. Import from Excel or add manually.</p>
               <div style={{display:'flex',gap:10,justifyContent:'center'}}>
-                <button onClick={()=>setIT('lead')} style={{background:'#E0F7EF',color:'#047857',border:'none',
+                <button onClick={()=>setIT('lead')} style={{background:'#E0F2FE',color:'#0369A1',border:'none',
                   cursor:'pointer',padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
                   Import from Excel
                 </button>
-                <button onClick={()=>setLM({})} style={{background:'#6366f1',color:'white',border:'none',
+                <button onClick={()=>setLM({})} style={{background:'#2563EB',color:'white',border:'none',
                   cursor:'pointer',padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
                   + Add manually
                 </button>
@@ -2442,7 +2424,7 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
             <Card>
               <div style={{overflowX:'auto'}}>
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F8FAFC'}}>
                     {['#','Date','Source','Contact Name','Company','Phone','Email','Primary Use','Term','Vehicle','Sales Rep',''].map(h=><th key={h} style={{...TH,padding:'8px 10px'}}>{h}</th>)}
                   </tr></thead>
                   <tbody>
@@ -2451,7 +2433,7 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                         <td style={{...TD,color:TXT2,fontSize:10,padding:'7px 10px'}}>{l.no||i+1}</td>
                         <td style={{...TD,padding:'7px 10px',whiteSpace:'nowrap'}}>{l.date||'—'}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          {l.source&&<span style={{background:'#EEEEFF',color:'#6366f1',fontSize:10,
+                          {l.source&&<span style={{background:'#DBEAFE',color:'#2563EB',fontSize:10,
                             fontWeight:600,padding:'2px 7px',borderRadius:99}}>{l.source}</span>}
                           {!l.source&&<span style={{color:TXT2}}>—</span>}
                         </td>
@@ -2461,15 +2443,15 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                         <td style={{...TD,padding:'7px 10px',maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.email||'—'}</td>
                         <td style={{...TD,padding:'7px 10px'}}>{l.primaryUse||'—'}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          {l.term&&<span style={{background:l.term.toLowerCase().includes('long')?'#EEEEFF':'#FEF4DC',
-                            color:l.term.toLowerCase().includes('long')?'#6366f1':'#92400e',
+                          {l.term&&<span style={{background:l.term.toLowerCase().includes('long')?'#DBEAFE':'#FEF4DC',
+                            color:l.term.toLowerCase().includes('long')?'#2563EB':'#92400e',
                             fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:99}}>{l.term}</span>}
                           {!l.term&&<span style={{color:TXT2}}>—</span>}
                         </td>
                         <td style={{...TD,padding:'7px 10px'}}>{l.vehicle||'—'}</td>
                         <td style={{...TD,padding:'7px 10px'}}>{l.salesRep||'—'}</td>
                         <td style={{padding:'7px 10px'}}>
-                          <button onClick={()=>setLM({edit:l})} style={{background:'#EEEEFF',color:'#6366f1',
+                          <button onClick={()=>setLM({edit:l})} style={{background:'#DBEAFE',color:'#2563EB',
                             border:'none',cursor:'pointer',padding:'3px 9px',borderRadius:7,
                             fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button>
                         </td>
@@ -2493,11 +2475,11 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
               <i className="ti ti-building" style={{fontSize:32,color:TXT2,display:'block',marginBottom:12}}/>
               <p style={{color:TXT2,fontSize:14,margin:'0 0 16px'}}>No closed customers yet. Import from Excel or add manually.</p>
               <div style={{display:'flex',gap:10,justifyContent:'center'}}>
-                <button onClick={()=>setIT('deal')} style={{background:'#E0F7EF',color:'#047857',border:'none',
+                <button onClick={()=>setIT('deal')} style={{background:'#E0F2FE',color:'#0369A1',border:'none',
                   cursor:'pointer',padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
                   Import from Excel
                 </button>
-                <button onClick={()=>setDM({})} style={{background:'#6366f1',color:'white',border:'none',
+                <button onClick={()=>setDM({})} style={{background:'#2563EB',color:'white',border:'none',
                   cursor:'pointer',padding:'8px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F}}>
                   + Add manually
                 </button>
@@ -2507,7 +2489,7 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
             <Card>
               <div style={{overflowX:'auto'}}>
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                  <thead><tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F8FAFC'}}>
                     {['St','Contract No','Client Name','Make','Model','Total Rate','Salesman','Start Date','Agmt Date','Contract','Customer','From Mkt?',''].map(h=><th key={h} style={{...TH,padding:'8px 10px'}}>{h}</th>)}
                   </tr></thead>
                   <tbody>
@@ -2518,12 +2500,12 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                         <td style={{...TD,padding:'7px 10px',fontWeight:600}}>{d.name||'—'}</td>
                         <td style={{...TD,padding:'7px 10px'}}>{d.make||'—'}</td>
                         <td style={{...TD,padding:'7px 10px'}}>{d.model||'—'}</td>
-                        <td style={{...TD,padding:'7px 10px',fontWeight:600,color:'#10b981',whiteSpace:'nowrap'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
+                        <td style={{...TD,padding:'7px 10px',fontWeight:600,color:'#0EA5E9',whiteSpace:'nowrap'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
                         <td style={{...TD,padding:'7px 10px'}}>{d.salesperson||'—'}</td>
                         <td style={{...TD,padding:'7px 10px',whiteSpace:'nowrap'}}>{d.startDate||'—'}</td>
                         <td style={{...TD,padding:'7px 10px',whiteSpace:'nowrap'}}>{d.agreementDate||'—'}</td>
                         <td style={{padding:'7px 10px'}}>
-                          {d.contractType&&<span style={{background:'#EEEEFF',color:'#6366f1',fontSize:10,
+                          {d.contractType&&<span style={{background:'#DBEAFE',color:'#2563EB',fontSize:10,
                             fontWeight:600,padding:'2px 7px',borderRadius:99}}>{d.contractType}</span>}
                         </td>
                         <td style={{padding:'7px 10px'}}>
@@ -2531,12 +2513,12 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                             fontWeight:600,padding:'2px 7px',borderRadius:99}}>{d.customerType}</span>}
                         </td>
                         <td style={{padding:'7px 10px'}}>
-                          {d.fromMarketing===true&&<span style={{background:'#E0F7EF',color:'#047857',fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:99}}>✓ Yes</span>}
+                          {d.fromMarketing===true&&<span style={{background:'#E0F2FE',color:'#0369A1',fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:99}}>✓ Yes</span>}
                           {d.fromMarketing===false&&<span style={{background:'#F1F5F9',color:TXT2,fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:99}}>✗ No</span>}
                           {(d.fromMarketing===null||d.fromMarketing===undefined)&&<span style={{fontSize:10,color:'#f59e0b',fontWeight:600}}>?</span>}
                         </td>
                         <td style={{padding:'7px 10px'}}>
-                          <button onClick={()=>setDM({edit:d})} style={{background:'#EEEEFF',color:'#6366f1',
+                          <button onClick={()=>setDM({edit:d})} style={{background:'#DBEAFE',color:'#2563EB',
                             border:'none',cursor:'pointer',padding:'3px 9px',borderRadius:7,
                             fontSize:11,fontWeight:600,fontFamily:F}}>Edit</button>
                         </td>
@@ -2555,8 +2537,8 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
         <>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
             {[
-              {l:'Marketing leads',v:mLeads.length||'—',i:'ti-user-plus',c:'#6366f1',bg:'#EEEEFF'},
-              {l:'Closed (from marketing)',v:fromMkt.length||'—',i:'ti-circle-check',c:'#10b981',bg:'#E0F7EF'},
+              {l:'Marketing leads',v:mLeads.length||'—',i:'ti-user-plus',c:'#2563EB',bg:'#DBEAFE'},
+              {l:'Closed (from marketing)',v:fromMkt.length||'—',i:'ti-circle-check',c:'#0EA5E9',bg:'#E0F2FE'},
               {l:'Conversion rate',v:convRate?`${convRate}%`:'—',i:'ti-percentage',c:'#0891b2',bg:'#E0F5FB'},
               {l:'Total contract value',v:mktValue?`$${mktValue.toLocaleString()}`:'—',i:'ti-cash',c:'#f59e0b',bg:'#FEF4DC'},
             ].map(({l,v,i,c,bg})=>(
@@ -2600,25 +2582,25 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                       const confirmed=d.fromMarketing!==null&&d.fromMarketing!==undefined;
                       return (
                         <tr key={d.id} style={{borderBottom:`1px solid ${TBORDER}`,
-                          background:confirmed?(d.fromMarketing?'#F0FDF4':'#FAFBFF'):'#FFFAEC'}}>
+                          background:confirmed?(d.fromMarketing?'#F0F9FF':'#FAFBFF'):'#FFFAEC'}}>
                           <td style={{...TD,fontWeight:600,padding:'8px 12px'}}>{d.name||'—'}</td>
                           <td style={{...TD,padding:'8px 12px',whiteSpace:'nowrap'}}>{d.contractNo||'—'}</td>
                           <td style={{...TD,padding:'8px 12px'}}>{d.salesperson||'—'}</td>
-                          <td style={{...TD,fontWeight:700,color:'#10b981',padding:'8px 12px',whiteSpace:'nowrap'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
+                          <td style={{...TD,fontWeight:700,color:'#0EA5E9',padding:'8px 12px',whiteSpace:'nowrap'}}>{d.contractValue?`$${Number(d.contractValue).toLocaleString()}`:'—'}</td>
                           <td style={{...TD,padding:'8px 12px'}}>
-                            {match?<span style={{fontSize:11,color:'#047857',fontWeight:500}}>
+                            {match?<span style={{fontSize:11,color:'#0369A1',fontWeight:500}}>
                               {match.name||match.company} {match.phone&&`· ${match.phone}`}
                             </span>:<span style={{fontSize:11,color:TXT2}}>No match found</span>}
                           </td>
                           <td style={{padding:'8px 12px'}}>
                             {!confirmed?(
                               <div style={{display:'flex',gap:6}}>
-                                <button onClick={()=>markDeal(d.id,true)} style={{background:'#E0F7EF',color:'#047857',border:'none',cursor:'pointer',padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>✓ Yes</button>
+                                <button onClick={()=>markDeal(d.id,true)} style={{background:'#E0F2FE',color:'#0369A1',border:'none',cursor:'pointer',padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>✓ Yes</button>
                                 <button onClick={()=>markDeal(d.id,false)} style={{background:'#F1F5F9',color:TXT2,border:'none',cursor:'pointer',padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:F}}>✗ No</button>
                               </div>
                             ):(
                               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                <span style={{fontSize:11,fontWeight:700,color:d.fromMarketing?'#047857':TXT2}}>{d.fromMarketing?'✓ Yes':'✗ No'}</span>
+                                <span style={{fontSize:11,fontWeight:700,color:d.fromMarketing?'#0369A1':TXT2}}>{d.fromMarketing?'✓ Yes':'✗ No'}</span>
                                 <button onClick={()=>markDeal(d.id,null)} style={{background:'none',border:'none',cursor:'pointer',color:TXT2,fontSize:10,textDecoration:'underline',fontFamily:F}}>Reset</button>
                               </div>
                             )}
@@ -2651,14 +2633,14 @@ function ConversionPage({leadRecords,saveLeadRecords,closedDeals,saveClosedDeals
                           <td style={TD}>
                             {rate?(
                               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                <div style={{flex:1,height:5,borderRadius:3,background:'#EEF1F9',overflow:'hidden',minWidth:60}}>
-                                  <div style={{width:`${Math.min(100,rate)}%`,height:'100%',background:'#6366f1',borderRadius:3}}/>
+                                <div style={{flex:1,height:5,borderRadius:3,background:'#EFF4F8',overflow:'hidden',minWidth:60}}>
+                                  <div style={{width:`${Math.min(100,rate)}%`,height:'100%',background:'#2563EB',borderRadius:3}}/>
                                 </div>
-                                <span style={{fontSize:12,fontWeight:700,color:'#6366f1',whiteSpace:'nowrap'}}>{rate}%</span>
+                                <span style={{fontSize:12,fontWeight:700,color:'#2563EB',whiteSpace:'nowrap'}}>{rate}%</span>
                               </div>
                             ):<span style={{color:TXT2}}>—</span>}
                           </td>
-                          <td style={{...TD,fontWeight:700,color:'#10b981'}}>{s.value>0?`$${s.value.toLocaleString()}`:'—'}</td>
+                          <td style={{...TD,fontWeight:700,color:'#0EA5E9'}}>{s.value>0?`$${s.value.toLocaleString()}`:'—'}</td>
                         </tr>
                       );
                     })}
@@ -2766,9 +2748,9 @@ function DealModal({deal,onClose,onSave,onDelete}){
 
 /* ── COE Tracker ────────────────────────────────────────────────────────────── */
 const COE_CATS=[
-  {key:'Category A',short:'Cat A',label:'Cars ≤1600cc / EV ≤110kW',color:'#6366f1'},
+  {key:'Category A',short:'Cat A',label:'Cars ≤1600cc / EV ≤110kW',color:'#2563EB'},
   {key:'Category B',short:'Cat B',label:'Cars >1600cc / EV >110kW', color:'#0891b2'},
-  {key:'Category C',short:'Cat C',label:'Goods vehicles & buses',   color:'#10b981'},
+  {key:'Category C',short:'Cat C',label:'Goods vehicles & buses',   color:'#0EA5E9'},
   {key:'Category D',short:'Cat D',label:'Motorcycles',              color:'#f59e0b'},
   {key:'Category E',short:'Cat E',label:'Open category',            color:'#ef4444'},
 ];
@@ -2876,7 +2858,7 @@ function CoePage(){
                   <div style={{fontSize:20,fontWeight:700,color:TXT}}>{fmt(curr)}</div>
                   {d!=null&&(
                     <div style={{fontSize:11,marginTop:4,fontWeight:600,
-                      color:d>0?'#ef4444':'#10b981'}}>
+                      color:d>0?'#ef4444':'#0EA5E9'}}>
                       {d>0?'▲':'▼'} ${Math.abs(d).toLocaleString()} vs prev
                     </div>
                   )}
@@ -2891,8 +2873,8 @@ function CoePage(){
             {[['chart','Chart'],['table','Table']].map(([v,l])=>(
               <button key={v} onClick={()=>setView(v)} style={{
                 padding:'6px 16px',fontSize:12,fontFamily:F,fontWeight:view===v?700:400,
-                border:`1.5px solid ${view===v?'#6366f1':BORDER}`,borderRadius:99,
-                background:view===v?'#6366f1':'transparent',
+                border:`1.5px solid ${view===v?'#2563EB':BORDER}`,borderRadius:99,
+                background:view===v?'#2563EB':'transparent',
                 color:view===v?'white':TXT2,cursor:'pointer'}}>
                 {l}
               </button>
@@ -2905,7 +2887,7 @@ function CoePage(){
               <div style={{fontSize:12,color:TXT2,marginBottom:12}}>Quota premium (SGD) · both bidding exercises · past ~12 months</div>
               <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={chartData} margin={{top:4,right:8,bottom:0,left:0}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F9" vertical={false}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EFF4F8" vertical={false}/>
                   <XAxis dataKey="name" tick={{fontSize:10,fill:TXT2}} tickLine={false} axisLine={false}/>
                   <YAxis tick={{fontSize:10,fill:TXT2}} tickLine={false} axisLine={false}
                     tickFormatter={v=>'$'+Math.round(v/1000)+'k'} width={48}/>
@@ -2928,7 +2910,7 @@ function CoePage(){
               <div style={{overflowX:'auto'}}>
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                   <thead>
-                    <tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F7F8FD'}}>
+                    <tr style={{borderBottom:`2px solid ${TBORDER}`,background:'#F8FAFC'}}>
                       <th style={{...TH,padding:'9px 14px',textAlign:'left'}}>Bidding</th>
                       {activeCats.map(c=>(
                         <th key={c.key} colSpan={2}
@@ -2979,7 +2961,7 @@ function CoePage(){
                                 </td>
                                 <td key={c.key+'d'} style={{padding:'8px 8px',textAlign:'right',
                                   fontSize:11,fontWeight:600,whiteSpace:'nowrap',
-                                  color:d==null?TXT2:d>0?'#ef4444':'#10b981'}}>
+                                  color:d==null?TXT2:d>0?'#ef4444':'#0EA5E9'}}>
                                   {d==null?'—':(d>0?'▲':'▼')+' $'+Math.abs(d).toLocaleString()}
                                 </td>
                               </>
@@ -3087,7 +3069,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
         <p style={{margin:'0 0 18px',fontSize:13,color:TXT2}}>Rename members and pick a colour.</p>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           {lt.map((m,i)=>(
-            <div key={m.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:12,background:'#F7F8FD',border:`1px solid ${BORDER}`}}>
+            <div key={m.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:12,background:'#F8FAFC',border:`1px solid ${BORDER}`}}>
               <Avatar name={m.name} color={m.color} size={36}/>
               <input value={m.name} onChange={e=>setLt(t=>t.map((x,j)=>j===i?{...x,name:e.target.value}:x))}
                 style={{...inputStyle,flex:1,background:CARD}}/>
@@ -3108,7 +3090,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
           <Sel value={fy} onChange={e=>setFy(Number(e.target.value))} style={{width:'auto'}}>
             {[2023,2024,2025,2026,2027,2028].map(y=><option key={y} value={y}>{fyLabel(y)}</option>)}
           </Sel>
-          <span style={{fontSize:13,color:TXT2,background:'#EEF1F9',padding:'6px 14px',borderRadius:99,fontWeight:500}}>Apr {fy} – Mar {fy+1}</span>
+          <span style={{fontSize:13,color:TXT2,background:'#EFF4F8',padding:'6px 14px',borderRadius:99,fontWeight:500}}>Apr {fy} – Mar {fy+1}</span>
         </div>
       </Card>
 
@@ -3120,7 +3102,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
         </div>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12}}>
           <button onClick={smartMergePush} disabled={syncing}
-            style={{background:'#6366f1',color:'white',border:'none',
+            style={{background:'#2563EB',color:'white',border:'none',
               cursor:syncing?'not-allowed':'pointer',opacity:syncing?0.7:1,
               padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
               display:'flex',alignItems:'center',gap:6}}>
@@ -3136,7 +3118,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
             Pull latest from cloud
           </button>
           <button onClick={runInspect} disabled={syncing}
-            style={{background:'#F7F8FD',color:TXT2,border:`1px solid ${BORDER}`,
+            style={{background:'#F8FAFC',color:TXT2,border:`1px solid ${BORDER}`,
               cursor:syncing?'not-allowed':'pointer',opacity:syncing?0.7:1,
               padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,fontFamily:F,
               display:'flex',alignItems:'center',gap:6}}>
@@ -3148,8 +3130,8 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
         {syncing&&<p style={{fontSize:12,color:TXT2,margin:'0 0 8px'}}>Working…</p>}
 
         {syncMsg&&(
-          <div style={{padding:'10px 14px',borderRadius:10,background:'#E0F7EF',
-            border:'1px solid #BBF7D0',fontSize:12,color:'#047857',fontWeight:500,marginBottom:12}}>
+          <div style={{padding:'10px 14px',borderRadius:10,background:'#E0F2FE',
+            border:'1px solid #BAE6FD',fontSize:12,color:'#0369A1',fontWeight:500,marginBottom:12}}>
             {syncMsg}
           </div>
         )}
@@ -3159,7 +3141,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
             <thead>
               <tr style={{borderBottom:`1px solid ${TBORDER}`}}>
                 <th style={{...TH,textAlign:'left',padding:'6px 8px'}}>Data store</th>
-                <th style={{...TH,padding:'6px 8px',color:'#6366f1'}}>This browser</th>
+                <th style={{...TH,padding:'6px 8px',color:'#2563EB'}}>This browser</th>
                 <th style={{...TH,padding:'6px 8px',color:'#0891b2'}}>Cloud</th>
               </tr>
             </thead>
@@ -3169,7 +3151,7 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
                   <td style={{padding:'6px 8px',color:TXT,fontWeight:500,
                     textTransform:'capitalize'}}>{k.replace('mkt_','').replace(/_/g,' ')}</td>
                   <td style={{padding:'6px 8px',textAlign:'center',
-                    color:localCount!=='—'?'#6366f1':TXT2,
+                    color:localCount!=='—'?'#2563EB':TXT2,
                     fontWeight:localCount!=='—'?600:400}}>{localCount}</td>
                   <td style={{padding:'6px 8px',textAlign:'center',
                     color:cloudCount!=='—'?'#0891b2':TXT2,
@@ -3183,11 +3165,10 @@ function SettingsPage({team,saveTeam,fy,setFy}) {
 
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <PBtn onClick={save}>Save changes</PBtn>
-        {saved&&<span style={{fontSize:13,color:'#10b981',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
+        {saved&&<span style={{fontSize:13,color:'#0EA5E9',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
           <i className="ti ti-circle-check" style={{fontSize:15}} aria-hidden/> Saved!
         </span>}
       </div>
     </div>
   );
 }
-                                                                                                                              
