@@ -292,8 +292,8 @@ function LoginPage({onLogin}) {
           display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
           <i className="ti ti-chart-bar" style={{fontSize:26,color:'white'}}/>
         </div>
-        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Marketing OS</h1>
-        <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Enter the team password to continue</p>
+        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:700,color:TXT}}>Marketing Team</h1>
+        <p style={{margin:'0 0 28px',fontSize:13,color:TXT2}}>Pan Pac · Enter the team password to continue</p>
         <input type="password" value={pw}
           onChange={e=>{setPw(e.target.value);setError(false);}}
           onKeyDown={e=>e.key==='Enter'&&attempt()}
@@ -391,9 +391,9 @@ export default function App() {
         {/* Logo area */}
         <div style={{padding:'24px 20px 20px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:15,fontWeight:800,color:'white',letterSpacing:'-0.3px',
-            lineHeight:1.2}}>Marketing OS</div>
+            lineHeight:1.2}}>Marketing Team</div>
           <div style={{fontSize:11,color:'rgba(255,255,255,0.45)',marginTop:3,fontWeight:500}}>
-            Pan Pacific Leasing
+            Pan Pac
           </div>
         </div>
         {/* Nav items */}
