@@ -1883,7 +1883,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   return (
     <div>
       <PageHeader title="Calendar" action={
-        <PBtn onClick={()=>setEM({date:todayKey,defaultType:calTab==='tasks'?'Leave':undefined})}>
+        <PBtn onClick={()=>setEM({date:todayKey})}>
           <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
         </PBtn>
       }/>
@@ -1984,7 +1984,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             const extra=allItems.length-4;
             return (
               <div key={i}
-                onClick={()=>setEM({date:key,defaultType:calTab==='tasks'?'Leave':undefined})}
+                onClick={()=>setEM({date:key})}
                 style={{minHeight:120,padding:'6px',
                   borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
                   background:isToday?'#EFF6FF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
@@ -2082,7 +2082,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key,defaultType:calTab==='tasks'?'Leave':undefined});}}
+                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key});}}
                   style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
                     padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
                   + Add event
@@ -2158,7 +2158,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
         <EventModal
           event={eventModal.edit||null}
           defaultDate={eventModal.date||todayKey}
-          defaultType={eventModal.defaultType}
+          lockedType={!eventModal.edit&&calTab==='tasks'?'Leave':undefined}
           team={team}
           onClose={()=>setEM(null)}
           onSave={d=>eventModal.edit?upEvent(eventModal.edit.id,d):addEvent(d)}
@@ -2181,10 +2181,10 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   );
 }
 
-function EventModal({event,defaultDate,defaultType,team,onClose,onSave,onDelete}) {
+function EventModal({event,defaultDate,defaultType,lockedType,team,onClose,onSave,onDelete}) {
   const [f,setF]=useState({
     title:event?.title||'',
-    type:event?.type||(defaultType||'Activity'),
+    type:lockedType||(event?.type)||defaultType||'Activity',
     date:event?.date||defaultDate,
     endDate:event?.endDate||'',
     assigneeId:event?.assigneeId||'',
@@ -2192,6 +2192,10 @@ function EventModal({event,defaultDate,defaultType,team,onClose,onSave,onDelete}
   });
   const s=(k,v)=>setF(x=>({...x,[k]:v}));
   const {color}=EVENT_TYPES[f.type]||{color:'#2563EB'};
+  // Available types: exclude Leave on Campaign, only Leave on Task/Leave
+  const availableTypes=lockedType
+    ?[[lockedType,EVENT_TYPES[lockedType]]]
+    :Object.entries(EVENT_TYPES).filter(([t])=>t!=='Leave');
   return (
     <Modal title={event?'Edit event':'New event'} onClose={onClose}>
       <Lbl s="Event title">
@@ -2199,11 +2203,11 @@ function EventModal({event,defaultDate,defaultType,team,onClose,onSave,onDelete}
       </Lbl>
       <Lbl s="Event type">
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          {Object.entries(EVENT_TYPES).map(([type,{color:c}])=>(
-            <button key={type} onClick={()=>s('type',type)}
+          {availableTypes.map(([type,{color:c}])=>(
+            <button key={type} onClick={()=>!lockedType&&s('type',type)}
               style={{padding:'5px 14px',borderRadius:99,border:`1.5px solid ${f.type===type?c:BORDER}`,
                 background:f.type===type?c:'transparent',color:f.type===type?'white':TXT2,
-                cursor:'pointer',fontSize:12,fontWeight:f.type===type?700:400,fontFamily:F}}>
+                cursor:lockedType?'default':'pointer',fontSize:12,fontWeight:f.type===type?700:400,fontFamily:F}}>
               {type}
             </button>
           ))}
