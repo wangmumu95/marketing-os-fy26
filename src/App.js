@@ -29,11 +29,12 @@ const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yea
 const TEAM_PASSWORD = 'Panpac3003';
 
 const EVENT_TYPES = {
-  'Activity':         {color:'#0D9488',bg:'#CCFBF1'},  // teal
-  'Event':            {color:'#9333EA',bg:'#F3E8FF'},  // violet
-  'Loadup Campaign':  {color:'#D97706',bg:'#FEF3C7'},  // dark amber
-  'PPVTL Campaign':   {color:'#1D4ED8',bg:'#DBEAFE'},  // dark blue
-  'Other':            {color:'#64748B',bg:'#F1F5F9'},  // slate
+  'Activity':         {color:'#0D9488',bg:'#CCFBF1'},
+  'Leave':            {color:'#F97316',bg:'#FFF7ED'},
+  'Event':            {color:'#9333EA',bg:'#F3E8FF'},
+  'Loadup Campaign':  {color:'#D97706',bg:'#FEF3C7'},
+  'PPVTL Campaign':   {color:'#1D4ED8',bg:'#DBEAFE'},
+  'Other':            {color:'#64748B',bg:'#F1F5F9'},
 };
 
 // Singapore Public Holidays (fixed + approximate for lunar)
@@ -2072,10 +2073,10 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <button onClick={()=>{setDP(null);calTab==='campaign'?setEM({date:dayPopup.key}):setTM({date:dayPopup.key});}}
+                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key});}}
                   style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
                     padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
-                  + {calTab==='campaign'?'Add event':'Add task'}
+                  + Add event
                 </button>
                 <button onClick={()=>setDP(null)}
                   style={{background:'#EFF4F8',border:'none',cursor:'pointer',
