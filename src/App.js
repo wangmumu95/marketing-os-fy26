@@ -23,15 +23,15 @@ const FY_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','
 const PRIORITIES = ['Low','Medium','High','Urgent'];
 const PC = { Low:'#94a3b8', Medium:'#2563EB', High:'#F59E0B', Urgent:'#ef4444' };
 const PBG = { Low:'#F1F5F9', Medium:'#DBEAFE', High:'#FFFBEB', Urgent:'#FEE9E9' };
-const MC = ['#2563EB','#0891b2','#7C3AED','#F59E0B','#ef4444'];
+const MC = ['#2563EB','#DB2777','#16A34A','#EA580C','#7C3AED'];
 const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
 const TEAM_PASSWORD = 'Panpac3003';
 
 const EVENT_TYPES = {
   'Shooting':   {color:'#0891b2',bg:'#E0F5FB'},
-  'Activation': {color:'#0EA5E9',bg:'#E0F2FE'},
-  'Leave':      {color:'#f59e0b',bg:'#FEF4DC'},
+  'Activation': {color:'#059669',bg:'#ECFDF5'},
+  'Leave':      {color:'#F97316',bg:'#FFF7ED'},
   'Event':      {color:'#8b5cf6',bg:'#F0ECFF'},
   'Other':      {color:'#94a3b8',bg:'#F1F5F9'},
 };
