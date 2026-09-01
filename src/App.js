@@ -1883,7 +1883,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   return (
     <div>
       <PageHeader title="Calendar" action={
-        <PBtn onClick={()=>setEM({date:todayKey})}>
+        <PBtn onClick={()=>setEM({date:todayKey,defaultType:calTab==='tasks'?'Leave':undefined})}>
           <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
         </PBtn>
       }/>
@@ -1984,7 +1984,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             const extra=allItems.length-4;
             return (
               <div key={i}
-                onClick={()=>setEM({date:key})}
+                onClick={()=>setEM({date:key,defaultType:calTab==='tasks'?'Leave':undefined})}
                 style={{minHeight:120,padding:'6px',
                   borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
                   background:isToday?'#EFF6FF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
@@ -2082,7 +2082,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key});}}
+                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key,defaultType:calTab==='tasks'?'Leave':undefined});}}
                   style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
                     padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
                   + Add event
@@ -2158,6 +2158,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
         <EventModal
           event={eventModal.edit||null}
           defaultDate={eventModal.date||todayKey}
+          defaultType={eventModal.defaultType}
           team={team}
           onClose={()=>setEM(null)}
           onSave={d=>eventModal.edit?upEvent(eventModal.edit.id,d):addEvent(d)}
@@ -2180,10 +2181,10 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   );
 }
 
-function EventModal({event,defaultDate,team,onClose,onSave,onDelete}) {
+function EventModal({event,defaultDate,defaultType,team,onClose,onSave,onDelete}) {
   const [f,setF]=useState({
     title:event?.title||'',
-    type:event?.type||'Event',
+    type:event?.type||(defaultType||'Activity'),
     date:event?.date||defaultDate,
     endDate:event?.endDate||'',
     assigneeId:event?.assigneeId||'',
