@@ -29,11 +29,11 @@ const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yea
 const TEAM_PASSWORD = 'Panpac3003';
 
 const EVENT_TYPES = {
-  'Activity':         {color:'#0891b2',bg:'#E0F5FB'},
-  'Event':            {color:'#8b5cf6',bg:'#F0ECFF'},
-  'Loadup Campaign':  {color:'#F59E0B',bg:'#FEF3C7'},
-  'PPVTL Campaign':   {color:'#2563EB',bg:'#DBEAFE'},
-  'Other':            {color:'#94a3b8',bg:'#F1F5F9'},
+  'Activity':         {color:'#0D9488',bg:'#CCFBF1'},  // teal
+  'Event':            {color:'#9333EA',bg:'#F3E8FF'},  // violet
+  'Loadup Campaign':  {color:'#D97706',bg:'#FEF3C7'},  // dark amber
+  'PPVTL Campaign':   {color:'#1D4ED8',bg:'#DBEAFE'},  // dark blue
+  'Other':            {color:'#64748B',bg:'#F1F5F9'},  // slate
 };
 
 // Singapore Public Holidays (fixed + approximate for lunar)
@@ -446,7 +446,7 @@ export default function App() {
       <div style={{flex:1,height:'100vh',padding:'24px 28px',overflow:'auto',minWidth:0}}>
         {page==='dashboard'&&<DashPage team={team} tasks={tasks} kpis={kpis} expenses={expenses} leads={leads} fy={fy} setPage={setPage}/>}
         {page==='tasks'&&    <TasksPage team={team} tasks={tasks} saveTasks={svTasks}/>}
-        {page==='calendar'&&  <CalendarPage team={team} tasks={tasks} events={events} saveEvents={svEvents}/>}
+        {page==='calendar'&&  <CalendarPage team={team} tasks={tasks} saveTasks={svTasks} events={events} saveEvents={svEvents}/>}
         {page==='kpis'&&      <KpisPage team={team} kpis={kpis} saveKpis={svKpis} fy={fy}/>}
         {page==='finance'&&   <FinPage expenses={expenses} saveExp={svExp} leads={leads} saveLeads={svLeads} budgets={budgets} saveBudgets={svBudgets} fy={fy}/>}
         {page==='conversion'&&<ConversionPage leadRecords={leadRecords} saveLeadRecords={svLeadRecs} closedDeals={closedDeals} saveClosedDeals={svClosedDeals}/>}
@@ -1811,10 +1811,12 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
   );
 }
 /* ── Calendar ───────────────────────────────────────────────────────────────── */
-function CalendarPage({team,tasks,events,saveEvents}) {
+function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   const [cur,setCur]     =useState(new Date());
   const [eventModal,setEM]=useState(null);
-  const [dayPopup,setDP] =useState(null); // {key, items}
+  const [taskModal,setTM] =useState(null); // {date} or {edit: task}
+  const [dayPopup,setDP] =useState(null);
+  const [calTab,setCalTab]=useState('campaign'); // 'campaign' | 'tasks' // {key, items}
   const yr=cur.getFullYear(), mo=cur.getMonth();
 
   const MONTHS=['January','February','March','April','May','June',
@@ -1873,13 +1875,37 @@ function CalendarPage({team,tasks,events,saveEvents}) {
   const upEvent   =(id,d)=>{saveEvents(events.map(e=>e.id===id?{...e,...d}:e));setEM(null);};
   const delEvent  =id=>{saveEvents(events.filter(e=>e.id!==id));setEM(null);};
 
+  const addTask   =d=>{if(saveTasks)saveTasks([...tasks,{...d,id:mkId(),status:'To Do',subtasks:[],links:[],images:[]}]);setTM(null);};
+  const upTask    =(id,d)=>{if(saveTasks)saveTasks(tasks.map(t=>t.id===id?{...t,...d}:t));setTM(null);};
+  const delTask   =id=>{if(saveTasks)saveTasks(tasks.filter(t=>t.id!==id));setTM(null);};
+
   return (
     <div>
       <PageHeader title="Calendar" action={
-        <PBtn onClick={()=>setEM({date:todayKey})}>
-          <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
-        </PBtn>
+        calTab==='campaign'
+          ?<PBtn onClick={()=>setEM({date:todayKey})}>
+              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
+            </PBtn>
+          :<PBtn onClick={()=>setTM({date:todayKey})}>
+              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add task
+            </PBtn>
       }/>
+
+      {/* Tab switcher */}
+      <div style={{display:'flex',gap:6,marginBottom:20}}>
+        {[['campaign','Campaign Calendar','ti-speakerphone'],['tasks','Task Calendar','ti-layout-kanban']].map(([id,label,icon])=>(
+          <button key={id} onClick={()=>setCalTab(id)} style={{
+            display:'flex',alignItems:'center',gap:7,
+            padding:'8px 18px',fontSize:13,fontWeight:calTab===id?700:500,
+            border:`1.5px solid ${calTab===id?'#2563EB':BORDER}`,borderRadius:99,
+            background:calTab===id?'#2563EB':'transparent',
+            color:calTab===id?'white':TXT2,cursor:'pointer',fontFamily:F,
+            boxShadow:calTab===id?'0 2px 8px rgba(37,99,235,0.3)':'none'}}>
+            <i className={`ti ${icon}`} style={{fontSize:14}} aria-hidden/>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Month nav + legend */}
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,flexWrap:'wrap'}}>
@@ -1910,13 +1936,13 @@ function CalendarPage({team,tasks,events,saveEvents}) {
             <div style={{width:10,height:10,borderRadius:2,background:'#ef4444'}}/>
             <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Public holiday</span>
           </div>
-          {Object.entries(EVENT_TYPES).map(([type,{color}])=>(
+          {calTab==='campaign'&&Object.entries(EVENT_TYPES).map(([type,{color}])=>(
             <div key={type} style={{display:'flex',alignItems:'center',gap:5}}>
               <div style={{width:10,height:10,borderRadius:2,background:color}}/>
               <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{type}</span>
             </div>
           ))}
-          {activeMembers.map(m=>(
+          {calTab==='tasks'&&activeMembers.map(m=>(
             <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:m.color}}/>
               <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{m.name}</span>
@@ -1947,12 +1973,15 @@ function CalendarPage({team,tasks,events,saveEvents}) {
             const dayTasks=tasksForDay(cell.d);
             const dayEvents=eventsForDay(cell.d);
             const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
-            const allItems=[...dayEvents,...dayTasks];
+            // Show only relevant items per tab
+            const allItems=calTab==='campaign'
+              ?[...dayEvents]
+              :[...dayTasks];
             const showItems=allItems.slice(0,4);
             const extra=allItems.length-4;
             return (
               <div key={i}
-                onClick={()=>setEM({date:key})}
+                onClick={()=>calTab==='campaign'?setEM({date:key}):setTM({date:key})}
                 style={{minHeight:120,padding:'6px',
                   borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
                   background:isToday?'#EFF6FF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
@@ -2046,10 +2075,10 @@ function CalendarPage({team,tasks,events,saveEvents}) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key});}}
+                <button onClick={()=>{setDP(null);calTab==='campaign'?setEM({date:dayPopup.key}):setTM({date:dayPopup.key});}}
                   style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
                     padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
-                  + Add event
+                  + {calTab==='campaign'?'Add event':'Add task'}
                 </button>
                 <button onClick={()=>setDP(null)}
                   style={{background:'#EFF4F8',border:'none',cursor:'pointer',
@@ -2089,7 +2118,8 @@ function CalendarPage({team,tasks,events,saveEvents}) {
                   const od=item.dueDate&&item.dueDate<toKey(new Date())&&item.status!=='Done';
                   return (
                     <div key={item.id+dayPopup.key}
-                      style={{padding:'10px 12px',borderRadius:10,
+                      onClick={()=>{setDP(null);setTM({edit:item,date:dayPopup.key});}}
+                      style={{padding:'10px 12px',borderRadius:10,cursor:'pointer',
                         background:od?'#FEE9E9':'#F8FAFC',
                         border:`1.5px solid ${od?'#FECACA':BORDER}`,
                         display:'flex',alignItems:'center',gap:10}}>
@@ -2116,7 +2146,7 @@ function CalendarPage({team,tasks,events,saveEvents}) {
         </div>
       )}
 
-      {/* Event modal */}
+      {/* Event modal (Campaign Calendar) */}
       {eventModal&&(
         <EventModal
           event={eventModal.edit||null}
@@ -2125,6 +2155,18 @@ function CalendarPage({team,tasks,events,saveEvents}) {
           onClose={()=>setEM(null)}
           onSave={d=>eventModal.edit?upEvent(eventModal.edit.id,d):addEvent(d)}
           onDelete={eventModal.edit?()=>delEvent(eventModal.edit.id):null}
+        />
+      )}
+
+      {/* Task modal (Task Calendar) */}
+      {taskModal&&(
+        <TaskModal
+          title={taskModal.edit?'Edit task':'New task'}
+          task={taskModal.edit?{...taskModal.edit}:{dueDate:taskModal.date||todayKey}}
+          onClose={()=>setTM(null)}
+          onSave={d=>taskModal.edit?upTask(taskModal.edit.id,d):addTask(d)}
+          onDelete={taskModal.edit?()=>delTask(taskModal.edit.id):null}
+          team={team}
         />
       )}
     </div>
