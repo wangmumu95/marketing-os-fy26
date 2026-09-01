@@ -2006,7 +2006,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
 
                 {/* Events first, then tasks */}
                 {showItems.map((item,idx)=>{
-                  const isEvent=item.type!==undefined&&EVENT_TYPES[item.type];
+                  const isEvent=item.date&&!item.status;
                   if(isEvent){
                     const {color}=EVENT_TYPES[item.type]||{color:'#94a3b8'};
                     const assignee=team.find(m=>m.id===item.assigneeId);
@@ -2090,7 +2090,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             {/* Items list */}
             <div style={{overflowY:'auto',padding:'10px 12px',display:'flex',flexDirection:'column',gap:6}}>
               {dayPopup.items.map((item,idx)=>{
-                const isEvent=item.type!==undefined&&EVENT_TYPES[item.type];
+                const isEvent=item.date&&!item.status;
                 if(isEvent){
                   const {color}=EVENT_TYPES[item.type]||{color:'#94a3b8'};
                   const assignee=team.find(m=>m.id===item.assigneeId);
