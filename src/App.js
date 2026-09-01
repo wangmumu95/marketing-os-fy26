@@ -28,14 +28,19 @@ const RECUR_OPTS = ['','weekly','monthly','quarterly','yearly'];
 const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
 const TEAM_PASSWORD = 'Panpac3003';
 
+// Campaign calendar uses entity names as event types (colours from EC)
+// Task/Leave calendar uses Leave, Shooting, Others
 const EVENT_TYPES = {
-  'Activity':         {color:'#0D9488',bg:'#CCFBF1'},
-  'Leave':            {color:'#F97316',bg:'#FFF7ED'},
-  'Event':            {color:'#9333EA',bg:'#F3E8FF'},
-  'Loadup Campaign':  {color:'#D97706',bg:'#FEF3C7'},
-  'PPVTL Campaign':   {color:'#1D4ED8',bg:'#DBEAFE'},
-  'Other':            {color:'#64748B',bg:'#F1F5F9'},
+  'PPVTL':    {color:'#2563EB',bg:'#DBEAFE'},
+  'PPA/PPC':  {color:'#0891b2',bg:'#E0F5FB'},
+  'EM':        {color:'#7C3AED',bg:'#EDE9FE'},
+  'LOADUP':   {color:'#F59E0B',bg:'#FEF3C7'},
+  'Others':   {color:'#64748B',bg:'#F1F5F9'},
+  'Leave':    {color:'#F97316',bg:'#FFF7ED'},
+  'Shooting': {color:'#0D9488',bg:'#CCFBF1'},
 };
+const CAMPAIGN_TYPES   =['PPVTL','PPA/PPC','EM','LOADUP','Others'];
+const TASK_LEAVE_TYPES =['Leave','Shooting','Others'];
 
 // Singapore Public Holidays (fixed + approximate for lunar)
 const SG_HOLIDAYS = {
@@ -1933,18 +1938,18 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             <div style={{width:10,height:10,borderRadius:2,background:'#ef4444'}}/>
             <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Public holiday</span>
           </div>
-          {calTab==='campaign'&&Object.entries(EVENT_TYPES).filter(([t])=>t!=='Leave').map(([type,{color}])=>(
+          {calTab==='campaign'&&CAMPAIGN_TYPES.map(type=>(
             <div key={type} style={{display:'flex',alignItems:'center',gap:5}}>
-              <div style={{width:10,height:10,borderRadius:2,background:color}}/>
+              <div style={{width:10,height:10,borderRadius:2,background:EVENT_TYPES[type].color}}/>
               <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{type}</span>
             </div>
           ))}
-          {calTab==='tasks'&&(
-            <div style={{display:'flex',alignItems:'center',gap:5}}>
-              <div style={{width:10,height:10,borderRadius:2,background:EVENT_TYPES['Leave'].color}}/>
-              <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Leave</span>
+          {calTab==='tasks'&&TASK_LEAVE_TYPES.map(type=>(
+            <div key={type} style={{display:'flex',alignItems:'center',gap:5}}>
+              <div style={{width:10,height:10,borderRadius:2,background:EVENT_TYPES[type].color}}/>
+              <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{type}</span>
             </div>
-          )}
+          ))}
           {calTab==='tasks'&&activeMembers.map(m=>(
             <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:m.color}}/>
@@ -1978,8 +1983,8 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
             // Show only relevant items per tab
             const allItems=calTab==='campaign'
-              ?[...dayEvents.filter(e=>e.type!=='Leave')]
-              :[...dayEvents.filter(e=>e.type==='Leave'),...dayTasks];
+              ?[...dayEvents.filter(e=>CAMPAIGN_TYPES.includes(e.type))]
+              :[...dayEvents.filter(e=>TASK_LEAVE_TYPES.includes(e.type)),...dayTasks];
             const showItems=allItems.slice(0,4);
             const extra=allItems.length-4;
             return (
@@ -2047,8 +2052,8 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                   <button
                     onClick={e=>{e.stopPropagation();setDP({key,date:cell.d,
                       items:calTab==='campaign'
-                        ?dayEvents.filter(e=>e.type!=='Leave')
-                        :[...dayEvents.filter(e=>e.type==='Leave'),...dayTasks]});}}
+                        ?dayEvents.filter(e=>CAMPAIGN_TYPES.includes(e.type))
+                        :[...dayEvents.filter(e=>TASK_LEAVE_TYPES.includes(e.type)),...dayTasks]});}}
                     style={{fontSize:10,color:'#2563EB',fontWeight:600,padding:'2px 6px',
                       background:'#DBEAFE',border:'none',borderRadius:4,cursor:'pointer',
                       fontFamily:F,width:'100%',textAlign:'left',marginTop:1}}>
@@ -2158,7 +2163,9 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
         <EventModal
           event={eventModal.edit||null}
           defaultDate={eventModal.date||todayKey}
-          lockedType={!eventModal.edit&&calTab==='tasks'?'Leave':undefined}
+          allowedTypes={eventModal.edit
+            ?(TASK_LEAVE_TYPES.includes(eventModal.edit.type)?TASK_LEAVE_TYPES:CAMPAIGN_TYPES)
+            :(calTab==='tasks'?TASK_LEAVE_TYPES:CAMPAIGN_TYPES)}
           team={team}
           onClose={()=>setEM(null)}
           onSave={d=>eventModal.edit?upEvent(eventModal.edit.id,d):addEvent(d)}
@@ -2181,10 +2188,11 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   );
 }
 
-function EventModal({event,defaultDate,defaultType,lockedType,team,onClose,onSave,onDelete}) {
+function EventModal({event,defaultDate,allowedTypes,team,onClose,onSave,onDelete}) {
+  const types=allowedTypes||CAMPAIGN_TYPES;
   const [f,setF]=useState({
     title:event?.title||'',
-    type:lockedType||(event?.type)||defaultType||'Activity',
+    type:event?.type||types[0],
     date:event?.date||defaultDate,
     endDate:event?.endDate||'',
     assigneeId:event?.assigneeId||'',
@@ -2192,25 +2200,24 @@ function EventModal({event,defaultDate,defaultType,lockedType,team,onClose,onSav
   });
   const s=(k,v)=>setF(x=>({...x,[k]:v}));
   const {color}=EVENT_TYPES[f.type]||{color:'#2563EB'};
-  // Available types: exclude Leave on Campaign, only Leave on Task/Leave
-  const availableTypes=lockedType
-    ?[[lockedType,EVENT_TYPES[lockedType]]]
-    :Object.entries(EVENT_TYPES).filter(([t])=>t!=='Leave');
   return (
     <Modal title={event?'Edit event':'New event'} onClose={onClose}>
       <Lbl s="Event title">
         <Inp value={f.title} onChange={e=>s('title',e.target.value)} placeholder="e.g. Product shoot, Team activation at Toa Payoh"/>
       </Lbl>
-      <Lbl s="Event type">
+      <Lbl s="Entity / Type">
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          {availableTypes.map(([type,{color:c}])=>(
-            <button key={type} onClick={()=>!lockedType&&s('type',type)}
-              style={{padding:'5px 14px',borderRadius:99,border:`1.5px solid ${f.type===type?c:BORDER}`,
-                background:f.type===type?c:'transparent',color:f.type===type?'white':TXT2,
-                cursor:lockedType?'default':'pointer',fontSize:12,fontWeight:f.type===type?700:400,fontFamily:F}}>
-              {type}
-            </button>
-          ))}
+          {types.map(type=>{
+            const c=(EVENT_TYPES[type]||{}).color||'#94a3b8';
+            return (
+              <button key={type} onClick={()=>s('type',type)}
+                style={{padding:'5px 14px',borderRadius:99,border:`1.5px solid ${f.type===type?c:BORDER}`,
+                  background:f.type===type?c:'transparent',color:f.type===type?'white':TXT2,
+                  cursor:'pointer',fontSize:12,fontWeight:f.type===type?700:400,fontFamily:F}}>
+                {type}
+              </button>
+            );
+          })}
         </div>
       </Lbl>
       <Grid2>
