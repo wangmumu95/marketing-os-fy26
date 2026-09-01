@@ -2028,9 +2028,10 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                     const od=item.status!=='Done'&&key<todayKey;
                     return (
                       <div key={item.id+key}
+                        onClick={e=>{e.stopPropagation();setTM({edit:item});}}
                         style={{background:od?'#ef4444':done?'#0EA5E9':c,
                           color:'white',fontSize:10,fontWeight:600,padding:'2px 6px',
-                          borderRadius:4,marginBottom:2,
+                          borderRadius:4,marginBottom:2,cursor:'pointer',
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                           opacity:done?0.6:1,display:'flex',alignItems:'center',gap:3}}>
                         {item.recurring&&<i className="ti ti-repeat" style={{fontSize:8,flexShrink:0}}/>}
