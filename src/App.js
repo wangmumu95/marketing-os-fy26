@@ -311,7 +311,7 @@ function LoginPage({onLogin}) {
           Sign in →
         </button>
         <p style={{margin:'20px 0 0',fontSize:11,color:TXT2}}>
-          Ask your team lead if you've forgotten the password.
+          Open sesame.
         </p>
       </div>
     </div>
