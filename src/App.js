@@ -1882,13 +1882,9 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
   return (
     <div>
       <PageHeader title="Calendar" action={
-        calTab==='campaign'
-          ?<PBtn onClick={()=>setEM({date:todayKey})}>
-              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
-            </PBtn>
-          :<PBtn onClick={()=>setTM({date:todayKey})}>
-              <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add task
-            </PBtn>
+        <PBtn onClick={()=>setEM({date:todayKey})}>
+          <i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add event
+        </PBtn>
       }/>
 
       {/* Tab switcher */}
@@ -1981,7 +1977,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             const extra=allItems.length-4;
             return (
               <div key={i}
-                onClick={()=>calTab==='campaign'?setEM({date:key}):setTM({date:key})}
+                onClick={()=>setEM({date:key})}
                 style={{minHeight:120,padding:'6px',
                   borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
                   background:isToday?'#EFF6FF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
