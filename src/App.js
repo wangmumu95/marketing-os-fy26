@@ -1813,7 +1813,8 @@ function FinPage({expenses,saveExp,leads,saveLeads,budgets,saveBudgets,fy}) {
 /* ── Calendar ───────────────────────────────────────────────────────────────── */
 function CalendarPage({team,tasks,events,saveEvents}) {
   const [cur,setCur]     =useState(new Date());
-  const [eventModal,setEM]=useState(null); // null | {date} | {edit: event}
+  const [eventModal,setEM]=useState(null);
+  const [dayPopup,setDP] =useState(null); // {key, items}
   const yr=cur.getFullYear(), mo=cur.getMonth();
 
   const MONTHS=['January','February','March','April','May','June',
@@ -1947,14 +1948,14 @@ function CalendarPage({team,tasks,events,saveEvents}) {
             const dayEvents=eventsForDay(cell.d);
             const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
             const allItems=[...dayEvents,...dayTasks];
-            const showItems=allItems.slice(0,3);
-            const extra=allItems.length-3;
+            const showItems=allItems.slice(0,4);
+            const extra=allItems.length-4;
             return (
               <div key={i}
                 onClick={()=>setEM({date:key})}
-                style={{minHeight:100,padding:'6px',
+                style={{minHeight:120,padding:'6px',
                   borderRight:`1px solid ${TBORDER}`,borderBottom:`1px solid ${TBORDER}`,
-                  background:isToday?'#FAFAFF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
+                  background:isToday?'#EFF6FF':holiday?'#FFF8F8':isWeekend&&!cell.cur?'#FAFBFF':CARD,
                   cursor:'pointer',transition:'background 0.1s'}}>
 
                 {/* Date number */}
@@ -2010,15 +2011,110 @@ function CalendarPage({team,tasks,events,saveEvents}) {
                   }
                 })}
                 {extra>0&&(
-                  <div style={{fontSize:10,color:TXT2,fontWeight:600,padding:'1px 4px'}}>
+                  <button
+                    onClick={e=>{e.stopPropagation();setDP({key,date:cell.d,items:allItems});}}
+                    style={{fontSize:10,color:'#2563EB',fontWeight:600,padding:'2px 6px',
+                      background:'#DBEAFE',border:'none',borderRadius:4,cursor:'pointer',
+                      fontFamily:F,width:'100%',textAlign:'left',marginTop:1}}>
                     +{extra} more
-                  </div>
+                  </button>
                 )}
               </div>
             );
           })}
         </div>
       </Card>
+
+      {/* Day popup — all items for a day */}
+      {dayPopup&&(
+        <div style={{position:'fixed',inset:0,zIndex:1000,display:'flex',
+          alignItems:'flex-start',justifyContent:'center',paddingTop:'80px',
+          background:'rgba(0,0,0,0.3)'}}
+          onMouseDown={()=>setDP(null)}>
+          <div onMouseDown={e=>e.stopPropagation()}
+            style={{background:CARD,borderRadius:16,boxShadow:'0 20px 60px rgba(0,0,0,0.2)',
+              width:360,maxHeight:'70vh',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            {/* Header */}
+            <div style={{padding:'16px 18px 12px',borderBottom:`1px solid ${TBORDER}`,
+              display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:TXT}}>
+                  {dayPopup.date.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long'})}
+                </div>
+                <div style={{fontSize:12,color:TXT2,marginTop:2}}>
+                  {dayPopup.items.length} item{dayPopup.items.length!==1?'s':''}
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <button onClick={()=>{setDP(null);setEM({date:dayPopup.key});}}
+                  style={{background:'#2563EB',color:'white',border:'none',cursor:'pointer',
+                    padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:F}}>
+                  + Add event
+                </button>
+                <button onClick={()=>setDP(null)}
+                  style={{background:'#EFF4F8',border:'none',cursor:'pointer',
+                    width:30,height:30,borderRadius:8,display:'flex',alignItems:'center',
+                    justifyContent:'center',color:TXT2,fontSize:16}}>×</button>
+              </div>
+            </div>
+            {/* Items list */}
+            <div style={{overflowY:'auto',padding:'10px 12px',display:'flex',flexDirection:'column',gap:6}}>
+              {dayPopup.items.map((item,idx)=>{
+                const isEvent=item.type!==undefined&&EVENT_TYPES[item.type];
+                if(isEvent){
+                  const {color}=EVENT_TYPES[item.type]||{color:'#94a3b8'};
+                  const assignee=team.find(m=>m.id===item.assigneeId);
+                  return (
+                    <div key={item.id}
+                      onClick={()=>{setDP(null);setEM({edit:item});}}
+                      style={{padding:'10px 12px',borderRadius:10,cursor:'pointer',
+                        background:color+'15',border:`1.5px solid ${color}30`,
+                        display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:10,height:10,borderRadius:3,background:color,flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:600,color:TXT}}>{item.title}</div>
+                        <div style={{fontSize:11,color:TXT2,marginTop:1,display:'flex',gap:6}}>
+                          <span style={{color,fontWeight:500}}>{item.type}</span>
+                          {assignee&&<span>· {assignee.name}</span>}
+                          {item.endDate&&item.endDate!==item.date&&<span>· until {fmtMK(item.endDate)}</span>}
+                        </div>
+                      </div>
+                      <i className="ti ti-edit" style={{fontSize:12,color:TXT2}} aria-hidden/>
+                    </div>
+                  );
+                } else {
+                  const ids=getIds(item);
+                  const assignees=team.filter(m=>ids.includes(m.id));
+                  const c=assignees[0]?.color||EC[item.entity]?.a||'#94a3b8';
+                  const od=item.dueDate&&item.dueDate<toKey(new Date())&&item.status!=='Done';
+                  return (
+                    <div key={item.id+dayPopup.key}
+                      style={{padding:'10px 12px',borderRadius:10,
+                        background:od?'#FEE9E9':'#F8FAFC',
+                        border:`1.5px solid ${od?'#FECACA':BORDER}`,
+                        display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:10,height:10,borderRadius:3,background:c,flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:600,color:od?'#dc2626':TXT,
+                          display:'flex',alignItems:'center',gap:5}}>
+                          {item.recurring&&<i className="ti ti-repeat" style={{fontSize:10}} aria-hidden/>}
+                          {item.title}
+                        </div>
+                        <div style={{fontSize:11,color:TXT2,marginTop:1,display:'flex',gap:6}}>
+                          <span style={{fontWeight:500}}>{item.status}</span>
+                          {item.entity&&<span>· {item.entity}</span>}
+                          {assignees.length>0&&<span>· {assignees.map(a=>a.name.split(' ')[0]).join(', ')}</span>}
+                          {od&&<span style={{color:'#dc2626',fontWeight:600}}>· Overdue</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Event modal */}
       {eventModal&&(
