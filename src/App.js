@@ -1890,7 +1890,7 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
 
       {/* Tab switcher */}
       <div style={{display:'flex',gap:6,marginBottom:20}}>
-        {[['campaign','Campaign Calendar','ti-speakerphone'],['tasks','Task Calendar','ti-layout-kanban']].map(([id,label,icon])=>(
+        {[['campaign','Campaign Calendar','ti-speakerphone'],['tasks','Task / Leave Calendar','ti-layout-kanban']].map(([id,label,icon])=>(
           <button key={id} onClick={()=>setCalTab(id)} style={{
             display:'flex',alignItems:'center',gap:7,
             padding:'8px 18px',fontSize:13,fontWeight:calTab===id?700:500,
@@ -1933,12 +1933,18 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             <div style={{width:10,height:10,borderRadius:2,background:'#ef4444'}}/>
             <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Public holiday</span>
           </div>
-          {calTab==='campaign'&&Object.entries(EVENT_TYPES).map(([type,{color}])=>(
+          {calTab==='campaign'&&Object.entries(EVENT_TYPES).filter(([t])=>t!=='Leave').map(([type,{color}])=>(
             <div key={type} style={{display:'flex',alignItems:'center',gap:5}}>
               <div style={{width:10,height:10,borderRadius:2,background:color}}/>
               <span style={{fontSize:10,color:TXT2,fontWeight:500}}>{type}</span>
             </div>
           ))}
+          {calTab==='tasks'&&(
+            <div style={{display:'flex',alignItems:'center',gap:5}}>
+              <div style={{width:10,height:10,borderRadius:2,background:EVENT_TYPES['Leave'].color}}/>
+              <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Leave</span>
+            </div>
+          )}
           {calTab==='tasks'&&activeMembers.map(m=>(
             <div key={m.id} style={{display:'flex',alignItems:'center',gap:5}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:m.color}}/>
@@ -1972,8 +1978,8 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
             const isWeekend=cell.d.getDay()===0||cell.d.getDay()===6;
             // Show only relevant items per tab
             const allItems=calTab==='campaign'
-              ?[...dayEvents]
-              :[...dayTasks];
+              ?[...dayEvents.filter(e=>e.type!=='Leave')]
+              :[...dayEvents.filter(e=>e.type==='Leave'),...dayTasks];
             const showItems=allItems.slice(0,4);
             const extra=allItems.length-4;
             return (
@@ -2039,7 +2045,10 @@ function CalendarPage({team,tasks,saveTasks,events,saveEvents}) {
                 })}
                 {extra>0&&(
                   <button
-                    onClick={e=>{e.stopPropagation();setDP({key,date:cell.d,items:allItems});}}
+                    onClick={e=>{e.stopPropagation();setDP({key,date:cell.d,
+                      items:calTab==='campaign'
+                        ?dayEvents.filter(e=>e.type!=='Leave')
+                        :[...dayEvents.filter(e=>e.type==='Leave'),...dayTasks]});}}
                     style={{fontSize:10,color:'#2563EB',fontWeight:600,padding:'2px 6px',
                       background:'#DBEAFE',border:'none',borderRadius:4,cursor:'pointer',
                       fontFamily:F,width:'100%',textAlign:'left',marginTop:1}}>
