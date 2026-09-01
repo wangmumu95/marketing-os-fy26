@@ -29,9 +29,7 @@ const RECUR_LABEL = {weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yea
 const TEAM_PASSWORD = 'Panpac3003';
 
 const EVENT_TYPES = {
-  'Shooting':         {color:'#0891b2',bg:'#E0F5FB'},
-  'Activation':       {color:'#059669',bg:'#ECFDF5'},
-  'Leave':            {color:'#F97316',bg:'#FFF7ED'},
+  'Activity':         {color:'#0891b2',bg:'#E0F5FB'},
   'Event':            {color:'#8b5cf6',bg:'#F0ECFF'},
   'Loadup Campaign':  {color:'#F59E0B',bg:'#FEF3C7'},
   'PPVTL Campaign':   {color:'#2563EB',bg:'#DBEAFE'},
