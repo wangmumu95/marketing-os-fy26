@@ -12,9 +12,9 @@ const EC = {
   'LOADUP':  { a:'#F59E0B', bg:'#FEF3C7', t:'#92400E' },
   'Others':  { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
 };
-const TASK_COLS = ['To Do','In Progress','Review','Done'];
-const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9' };
-const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF' };
+const TASK_COLS = ['To Do','In Progress','Review','Done','Evergreen / Always On'];
+const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9','Evergreen / Always On':'#059669' };
+const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF','Evergreen / Always On':'#ECFDF5' };
 const KPI_TYPES = ['Leads Generated','Conversion Rate','Social Media','Campaign ROI','Revenue/Sales'];
 const KPI_UNITS = {'Leads Generated':'','Conversion Rate':'%','Social Media':'','Campaign ROI':'%','Revenue/Sales':'$'};
 const EXP_CATS = ['Lead Generation','Awareness','Customer Retention','Essential Services'];
