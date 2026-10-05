@@ -13,6 +13,7 @@ const EC = {
   'Others':  { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
 };
 const TASK_COLS = ['To Do','In Progress','Review','Done','Evergreen / Always On'];
+const KANBAN_COLS = ['To Do','In Progress','Review','Done'];
 const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9','Evergreen / Always On':'#059669' };
 const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF','Evergreen / Always On':'#ECFDF5' };
 const KPI_TYPES = ['Leads Generated','Conversion Rate','Social Media','Campaign ROI','Revenue/Sales'];
@@ -468,13 +469,13 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
   const now=new Date();
   const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-  // Team ongoing tasks — exclude Done
+  // Team ongoing tasks — exclude Done and Evergreen (always-on handled separately)
   const mStats=team.map(m=>({
     ...m,
     todo:   tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='To Do').length,
     ip:     tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='In Progress').length,
     review: tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='Review').length,
-    total:  tasks.filter(t=>getIds(t).includes(m.id)&&t.status!=='Done').length,
+    total:  tasks.filter(t=>getIds(t).includes(m.id)&&t.status!=='Done'&&t.status!=='Evergreen / Always On').length,
   }));
 
   // KPI overview by entity — text + check
@@ -709,9 +710,12 @@ function TasksPage({team,tasks,saveTasks}) {
   const [modal,setModal]=useState(null);
   const [dragId,setDrag]=useState(null);
   const [cardLightbox,setCardLightbox]=useState(null);
+  const [taskView,setTaskView]=useState('kanban'); // 'kanban' | 'evergreen'
   const now=new Date();
 
   const filtered=tasks.filter(t=>(fm==='all'||getIds(t).includes(fm))&&(fe==='all'||t.entity===fe));
+  const evergreenTasks=filtered.filter(t=>t.status==='Evergreen / Always On');
+  const kanbanFiltered=filtered.filter(t=>t.status!=='Evergreen / Always On');
   const addTask   =d=>{saveTasks([{...d,id:mkId(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},...tasks]);setModal(null);};
   const upTask    =(id,d)=>{saveTasks(tasks.map(t=>t.id===id?{...t,...d,updatedAt:new Date().toISOString()}:t));setModal(null);};
   const delTask   =id=>{saveTasks(tasks.filter(t=>t.id!==id));setModal(null);};
@@ -719,9 +723,33 @@ function TasksPage({team,tasks,saveTasks}) {
   const createNext=nt=>{saveTasks([nt,...tasks]);setModal(null);};
   const toggleSub =(tid,sid)=>{saveTasks(tasks.map(t=>t.id===tid?{...t,subtasks:(t.subtasks||[]).map(s=>s.id===sid?{...s,done:!s.done}:s),updatedAt:new Date().toISOString()}:t));};
 
+  // Tab pill style helper
+  const tabStyle=active=>({
+    padding:'6px 16px',borderRadius:99,fontSize:13,fontWeight:600,cursor:'pointer',
+    border:'none',fontFamily:F,transition:'all 0.15s',
+    background:active?'#059669':'transparent',
+    color:active?'#fff':TXT2,
+    boxShadow:active?'0 1px 4px #05966940':'none',
+  });
+
   return (
     <div>
       <PageHeader title="Tasks" action={<PBtn onClick={()=>setModal('add')}><i className="ti ti-plus" style={{fontSize:14}} aria-hidden/> Add task</PBtn>}/>
+
+      {/* View tabs */}
+      <div style={{display:'flex',gap:4,marginBottom:16,background:CARD,padding:4,borderRadius:99,
+        border:`1px solid ${BORDER}`,width:'fit-content'}}>
+        <button style={tabStyle(taskView==='kanban')} onClick={()=>setTaskView('kanban')}>
+          <i className="ti ti-layout-kanban" style={{fontSize:12,marginRight:5}} aria-hidden/>Kanban
+        </button>
+        <button style={tabStyle(taskView==='evergreen')} onClick={()=>setTaskView('evergreen')}>
+          <i className="ti ti-refresh" style={{fontSize:12,marginRight:5}} aria-hidden/>Evergreen / Always On
+          {evergreenTasks.length>0&&<span style={{background:'#d1fae5',color:'#059669',fontSize:10,
+            fontWeight:700,padding:'1px 7px',borderRadius:99,marginLeft:8}}>{evergreenTasks.length}</span>}
+        </button>
+      </div>
+
+      {/* Filters */}
       <div style={{display:'flex',gap:8,marginBottom:18,alignItems:'center'}}>
         <Sel value={fm} onChange={e=>setFm(e.target.value)} style={{width:'auto',fontSize:12}}>
           <option value="all">All members</option>
@@ -731,11 +759,103 @@ function TasksPage({team,tasks,saveTasks}) {
           <option value="all">All entities</option>
           {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
         </Sel>
-        <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500}}>{filtered.length} tasks</span>
+        <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500}}>
+          {taskView==='evergreen'?evergreenTasks.length:kanbanFiltered.length} tasks
+        </span>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,alignItems:'start'}}>
-        {TASK_COLS.map(col=>{
-          const colT=filtered.filter(t=>t.status===col);
+
+      {/* Evergreen view */}
+      {taskView==='evergreen'&&(
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+            <div style={{width:12,height:12,borderRadius:3,background:'#059669'}}/>
+            <span style={{fontSize:13,color:TXT2,fontWeight:500}}>These tasks run indefinitely — no start or end date needed.</span>
+          </div>
+          {evergreenTasks.length===0?(
+            <div style={{textAlign:'center',padding:'60px 0',color:TXT2}}>
+              <i className="ti ti-refresh" style={{fontSize:40,display:'block',marginBottom:12,color:'#86efac'}} aria-hidden/>
+              <p style={{margin:0,fontSize:14,fontWeight:500}}>No evergreen tasks yet</p>
+              <p style={{margin:'6px 0 16px',fontSize:12,color:TXT2}}>Add a task and set its status to "Evergreen / Always On"</p>
+              <PBtn onClick={()=>setModal('add')}><i className="ti ti-plus" style={{fontSize:13}} aria-hidden/> Add task</PBtn>
+            </div>
+          ):(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
+              {evergreenTasks.map(t=>{
+                const ids=getIds(t);
+                const assignees=team.filter(m=>ids.includes(m.id));
+                const ec=EC[t.entity]||{a:'#94a3b8'};
+                const stDone=(t.subtasks||[]).filter(s=>s.done).length;
+                const stTotal=(t.subtasks||[]).length;
+                const stPct=stTotal>0?Math.round((stDone/stTotal)*100):null;
+                return (
+                  <div key={t.id} onClick={()=>setModal({edit:t})}
+                    style={{background:CARD,borderRadius:12,padding:'14px 16px',cursor:'pointer',
+                      boxShadow:CSHADOW,borderTop:'3px solid #059669',position:'relative'}}>
+                    {/* Evergreen leaf badge */}
+                    <div style={{position:'absolute',top:10,right:12,background:'#d1fae5',
+                      color:'#059669',fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:99,
+                      textTransform:'uppercase',letterSpacing:'0.5px'}}>
+                      <i className="ti ti-refresh" style={{fontSize:8,marginRight:3}} aria-hidden/>Always On
+                    </div>
+                    <p style={{margin:'0 0 10px',fontSize:13,fontWeight:600,color:TXT,lineHeight:1.4,paddingRight:80}}>{t.title}</p>
+                    {t.description&&<p style={{margin:'0 0 10px',fontSize:11,color:TXT2,lineHeight:1.5}}>{t.description}</p>}
+                    {stTotal>0&&(
+                      <div style={{marginBottom:10}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                          <span style={{fontSize:10,color:TXT2,fontWeight:500}}>Milestones</span>
+                          <span style={{fontSize:10,color:stDone===stTotal?'#059669':TXT2,fontWeight:stDone===stTotal?700:500}}>{stDone}/{stTotal}</span>
+                        </div>
+                        <div style={{height:4,borderRadius:2,background:'#ECFDF5',overflow:'hidden'}}>
+                          <div style={{width:`${stPct}%`,height:'100%',background:'#059669',borderRadius:2}}/>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginTop:6}}>
+                      {t.entity&&<Chip label={t.entity} ec={t.entity}/>}
+                      {t.priority&&<PriorityBadge priority={t.priority}/>}
+                      {t.recurring&&(
+                        <span style={{background:'#E0F5FB',color:'#0891b2',fontSize:'9px',fontWeight:700,
+                          padding:'2px 6px',borderRadius:99,textTransform:'uppercase'}}>
+                          <i className="ti ti-repeat" style={{fontSize:8,marginRight:2}} aria-hidden/>
+                          {RECUR_LABEL[t.recurring]}
+                        </span>
+                      )}
+                      {assignees.length>0&&<AvatarStack assignees={assignees} size={20} style={{marginLeft:'auto'}}/>}
+                    </div>
+                    {(t.links||[]).length>0&&(
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}}
+                        onClick={e=>e.stopPropagation()}>
+                        {(t.links||[]).map(link=>{
+                          const c=getLinkColor(link.url);
+                          return (
+                            <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                              style={{display:'flex',alignItems:'center',gap:4,fontSize:10,fontWeight:600,
+                                padding:'2px 7px',borderRadius:5,background:c+'15',color:c,
+                                textDecoration:'none',border:`1px solid ${c}30`}}>
+                              <i className="ti ti-link" style={{fontSize:9}}/>{link.label||getDomain(link.url)}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button onClick={()=>setModal('add')}
+                style={{background:'transparent',border:'1.5px dashed #05996940',borderRadius:12,
+                  padding:'14px',cursor:'pointer',color:'#059669',fontSize:12,fontFamily:F,
+                  display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontWeight:500,minHeight:80}}>
+                <i className="ti ti-plus" style={{fontSize:13}} aria-hidden/> Add evergreen task
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Kanban view */}
+      {taskView==='kanban'&&<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,alignItems:'start'}}>
+        {KANBAN_COLS.map(col=>{
+          const colT=kanbanFiltered.filter(t=>t.status===col);
           return (
             <div key={col} onDragOver={e=>e.preventDefault()}
               onDrop={e=>{e.preventDefault();if(dragId){moveTask(dragId,col);setDrag(null);}}}>
@@ -855,7 +975,7 @@ function TasksPage({team,tasks,saveTasks}) {
             </div>
           );
         })}
-      </div>
+      </div>}
       {modal==='add'&&<TaskModal title="New task" onClose={()=>setModal(null)} onSave={addTask} team={team}/>}
       {modal?.edit&&<TaskModal title="Edit task" task={modal.edit} onClose={()=>setModal(null)}
         onSave={d=>upTask(modal.edit.id,d)} onDelete={()=>delTask(modal.edit.id)}
