@@ -4,13 +4,15 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import * as XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
 
-const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','Others'];
+const ENTITIES = ['PPVTL','PPA/PPC','EM','LOADUP','JE Graphics','NWH','Others'];
 const EC = {
-  'PPVTL':   { a:'#2563EB', bg:'#DBEAFE', t:'#1D4ED8' },
-  'PPA/PPC': { a:'#0891b2', bg:'#E0F5FB', t:'#0369a1' },
-  'EM':      { a:'#7C3AED', bg:'#EDE9FE', t:'#5B21B6' },
-  'LOADUP':  { a:'#F59E0B', bg:'#FEF3C7', t:'#92400E' },
-  'Others':  { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
+  'PPVTL':      { a:'#2563EB', bg:'#DBEAFE', t:'#1D4ED8' },
+  'PPA/PPC':    { a:'#0891b2', bg:'#E0F5FB', t:'#0369a1' },
+  'EM':         { a:'#7C3AED', bg:'#EDE9FE', t:'#5B21B6' },
+  'LOADUP':     { a:'#F59E0B', bg:'#FEF3C7', t:'#92400E' },
+  'JE Graphics':{ a:'#E11D48', bg:'#FFE4E6', t:'#BE123C' },
+  'NWH':        { a:'#0F766E', bg:'#CCFBF1', t:'#0D5C56' },
+  'Others':     { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
 };
 const TASK_COLS = ['To Do','In Progress','Review','Done','Evergreen / Always On'];
 const KANBAN_COLS = ['To Do','In Progress','Review','Done'];
@@ -32,15 +34,17 @@ const TEAM_PASSWORD = 'Panpac3003';
 // Campaign calendar uses entity names as event types (colours from EC)
 // Task/Leave calendar uses Leave, Shooting, Others
 const EVENT_TYPES = {
-  'PPVTL':    {color:'#2563EB',bg:'#DBEAFE'},
-  'PPA/PPC':  {color:'#0891b2',bg:'#E0F5FB'},
-  'EM':        {color:'#7C3AED',bg:'#EDE9FE'},
-  'LOADUP':   {color:'#F59E0B',bg:'#FEF3C7'},
-  'Others':   {color:'#64748B',bg:'#F1F5F9'},
-  'Leave':    {color:'#F97316',bg:'#FFF7ED'},
-  'Shooting': {color:'#0D9488',bg:'#CCFBF1'},
+  'PPVTL':       {color:'#2563EB',bg:'#DBEAFE'},
+  'PPA/PPC':     {color:'#0891b2',bg:'#E0F5FB'},
+  'EM':          {color:'#7C3AED',bg:'#EDE9FE'},
+  'LOADUP':      {color:'#F59E0B',bg:'#FEF3C7'},
+  'JE Graphics': {color:'#E11D48',bg:'#FFE4E6'},
+  'NWH':         {color:'#0F766E',bg:'#CCFBF1'},
+  'Others':      {color:'#64748B',bg:'#F1F5F9'},
+  'Leave':       {color:'#F97316',bg:'#FFF7ED'},
+  'Shooting':    {color:'#0D9488',bg:'#CCFBF1'},
 };
-const CAMPAIGN_TYPES   =['PPVTL','PPA/PPC','EM','LOADUP','Others'];
+const CAMPAIGN_TYPES   =['PPVTL','PPA/PPC','EM','LOADUP','JE Graphics','NWH','Others'];
 const TASK_LEAVE_TYPES =['Leave','Shooting','Others'];
 
 // Singapore Public Holidays (fixed + approximate for lunar)
