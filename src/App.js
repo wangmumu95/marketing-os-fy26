@@ -14,10 +14,9 @@ const EC = {
   'NWH':        { a:'#0F766E', bg:'#CCFBF1', t:'#0D5C56' },
   'Others':     { a:'#64748B', bg:'#F1F5F9', t:'#475569' },
 };
-const TASK_COLS = ['To Do','In Progress','Review','Done','Evergreen / Always On'];
-const KANBAN_COLS = ['To Do','In Progress','Review','Done'];
-const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9','Evergreen / Always On':'#059669' };
-const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF','Evergreen / Always On':'#ECFDF5' };
+const TASK_COLS = ['To Do','In Progress','Review','Done'];
+const CC = { 'To Do':'#94a3b8','In Progress':'#2563EB','Review':'#F59E0B','Done':'#0EA5E9' };
+const COL_BG = { 'To Do':'#F8FAFC','In Progress':'#EFF6FF','Review':'#FFFBEB','Done':'#F0F9FF' };
 const KPI_TYPES = ['Leads Generated','Conversion Rate','Social Media','Campaign ROI','Revenue/Sales'];
 const KPI_UNITS = {'Leads Generated':'','Conversion Rate':'%','Social Media':'','Campaign ROI':'%','Revenue/Sales':'$'};
 const EXP_CATS = ['Lead Generation','Awareness','Customer Retention','Essential Services'];
@@ -711,15 +710,32 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
 function TasksPage({team,tasks,saveTasks}) {
   const [fm,setFm]=useState('all');
   const [fe,setFe]=useState('all');
+  const [fp,setFp]=useState('all');       // priority filter
+  const [fsort,setFsort]=useState('none'); // 'none' | 'due-asc' | 'due-desc'
   const [modal,setModal]=useState(null);
   const [dragId,setDrag]=useState(null);
   const [cardLightbox,setCardLightbox]=useState(null);
   const [taskView,setTaskView]=useState('kanban'); // 'kanban' | 'evergreen'
   const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-  const filtered=tasks.filter(t=>(fm==='all'||getIds(t).includes(fm))&&(fe==='all'||t.entity===fe));
-  const evergreenTasks=filtered.filter(t=>t.status==='Evergreen / Always On');
-  const kanbanFiltered=filtered.filter(t=>t.status!=='Evergreen / Always On');
+  const sortTasks=arr=>{
+    if(fsort==='none') return arr;
+    return [...arr].sort((a,b)=>{
+      const aD=a.dueDate||'';const bD=b.dueDate||'';
+      if(!aD&&!bD) return 0;
+      if(!aD) return 1; if(!bD) return -1;
+      return fsort==='due-asc'?aD.localeCompare(bD):bD.localeCompare(aD);
+    });
+  };
+
+  const filtered=tasks.filter(t=>
+    (fm==='all'||getIds(t).includes(fm))&&
+    (fe==='all'||t.entity===fe)&&
+    (fp==='all'||t.priority===fp)
+  );
+  const evergreenTasks=sortTasks(filtered.filter(t=>t.status==='Evergreen / Always On'));
+  const kanbanFiltered=sortTasks(filtered.filter(t=>t.status!=='Evergreen / Always On'));
   const addTask   =d=>{saveTasks([{...d,id:mkId(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},...tasks]);setModal(null);};
   const upTask    =(id,d)=>{saveTasks(tasks.map(t=>t.id===id?{...t,...d,updatedAt:new Date().toISOString()}:t));setModal(null);};
   const delTask   =id=>{saveTasks(tasks.filter(t=>t.id!==id));setModal(null);};
@@ -754,7 +770,7 @@ function TasksPage({team,tasks,saveTasks}) {
       </div>
 
       {/* Filters */}
-      <div style={{display:'flex',gap:8,marginBottom:18,alignItems:'center'}}>
+      <div style={{display:'flex',gap:8,marginBottom:18,alignItems:'center',flexWrap:'wrap'}}>
         <Sel value={fm} onChange={e=>setFm(e.target.value)} style={{width:'auto',fontSize:12}}>
           <option value="all">All members</option>
           {team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
@@ -763,7 +779,23 @@ function TasksPage({team,tasks,saveTasks}) {
           <option value="all">All entities</option>
           {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
         </Sel>
-        <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500}}>
+        <Sel value={fp} onChange={e=>setFp(e.target.value)} style={{width:'auto',fontSize:12}}>
+          <option value="all">All priorities</option>
+          {PRIORITIES.map(p=><option key={p} value={p}>{p}</option>)}
+        </Sel>
+        <Sel value={fsort} onChange={e=>setFsort(e.target.value)} style={{width:'auto',fontSize:12}}>
+          <option value="none">Sort: Default</option>
+          <option value="due-asc">Due date: Earliest first</option>
+          <option value="due-desc">Due date: Latest first</option>
+        </Sel>
+        {(fm!=='all'||fe!=='all'||fp!=='all'||fsort!=='none')&&(
+          <button onClick={()=>{setFm('all');setFe('all');setFp('all');setFsort('none');}}
+            style={{background:'#FEE9E9',border:'none',cursor:'pointer',fontSize:11,color:'#ef4444',
+              fontWeight:600,padding:'5px 10px',borderRadius:99,fontFamily:F}}>
+            ✕ Clear filters
+          </button>
+        )}
+        <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500,marginLeft:'auto'}}>
           {taskView==='evergreen'?evergreenTasks.length:kanbanFiltered.length} tasks
         </span>
       </div>
