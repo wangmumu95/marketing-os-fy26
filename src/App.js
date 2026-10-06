@@ -472,7 +472,7 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
   const now=new Date();
   const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-  // Team ongoing tasks — exclude Done and Evergreen (always-on handled separately)
+  // Team ongoing tasks — exclude Done
   const mStats=team.map(m=>({
     ...m,
     todo:   tasks.filter(t=>getIds(t).includes(m.id)&&t.status==='To Do').length,
@@ -708,16 +708,15 @@ function DashPage({team,tasks,kpis,expenses,leads,fy,setPage}) {
 }
 /* ── Tasks ──────────────────────────────────────────────────────────────────── */
 function TasksPage({team,tasks,saveTasks}) {
+  const [taskView,setTaskView]=useState('kanban');
   const [fm,setFm]=useState('all');
   const [fe,setFe]=useState('all');
-  const [fp,setFp]=useState('all');       // priority filter
-  const [fsort,setFsort]=useState('none'); // 'none' | 'due-asc' | 'due-desc'
+  const [fp,setFp]=useState('all');
+  const [fsort,setFsort]=useState('none');
   const [modal,setModal]=useState(null);
   const [dragId,setDrag]=useState(null);
   const [cardLightbox,setCardLightbox]=useState(null);
-  const [taskView,setTaskView]=useState('kanban'); // 'kanban' | 'evergreen'
   const now=new Date();
-  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
   const sortTasks=arr=>{
     if(fsort==='none') return arr;
@@ -729,13 +728,13 @@ function TasksPage({team,tasks,saveTasks}) {
     });
   };
 
-  const filtered=tasks.filter(t=>
+  const evergreenTasks=tasks.filter(t=>t.status==='Evergreen / Always On');
+  const kanbanFiltered=sortTasks(tasks.filter(t=>
+    t.status!=='Evergreen / Always On'&&
     (fm==='all'||getIds(t).includes(fm))&&
     (fe==='all'||t.entity===fe)&&
     (fp==='all'||t.priority===fp)
-  );
-  const evergreenTasks=sortTasks(filtered.filter(t=>t.status==='Evergreen / Always On'));
-  const kanbanFiltered=sortTasks(filtered.filter(t=>t.status!=='Evergreen / Always On'));
+  ));
   const addTask   =d=>{saveTasks([{...d,id:mkId(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},...tasks]);setModal(null);};
   const upTask    =(id,d)=>{saveTasks(tasks.map(t=>t.id===id?{...t,...d,updatedAt:new Date().toISOString()}:t));setModal(null);};
   const delTask   =id=>{saveTasks(tasks.filter(t=>t.id!==id));setModal(null);};
@@ -743,13 +742,12 @@ function TasksPage({team,tasks,saveTasks}) {
   const createNext=nt=>{saveTasks([nt,...tasks]);setModal(null);};
   const toggleSub =(tid,sid)=>{saveTasks(tasks.map(t=>t.id===tid?{...t,subtasks:(t.subtasks||[]).map(s=>s.id===sid?{...s,done:!s.done}:s),updatedAt:new Date().toISOString()}:t));};
 
-  // Tab pill style helper
   const tabStyle=active=>({
     padding:'6px 16px',borderRadius:99,fontSize:13,fontWeight:600,cursor:'pointer',
     border:'none',fontFamily:F,transition:'all 0.15s',
-    background:active?'#059669':'transparent',
+    background:active?'#2563EB':'transparent',
     color:active?'#fff':TXT2,
-    boxShadow:active?'0 1px 4px #05966940':'none',
+    boxShadow:active?'0 1px 4px #2563EB40':'none',
   });
 
   return (
@@ -769,36 +767,38 @@ function TasksPage({team,tasks,saveTasks}) {
         </button>
       </div>
 
-      {/* Filters */}
-      <div style={{display:'flex',gap:8,marginBottom:18,alignItems:'center',flexWrap:'wrap'}}>
-        <Sel value={fm} onChange={e=>setFm(e.target.value)} style={{width:'auto',fontSize:12}}>
-          <option value="all">All members</option>
-          {team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-        </Sel>
-        <Sel value={fe} onChange={e=>setFe(e.target.value)} style={{width:'auto',fontSize:12}}>
-          <option value="all">All entities</option>
-          {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
-        </Sel>
-        <Sel value={fp} onChange={e=>setFp(e.target.value)} style={{width:'auto',fontSize:12}}>
-          <option value="all">All priorities</option>
-          {PRIORITIES.map(p=><option key={p} value={p}>{p}</option>)}
-        </Sel>
-        <Sel value={fsort} onChange={e=>setFsort(e.target.value)} style={{width:'auto',fontSize:12}}>
-          <option value="none">Sort: Default</option>
-          <option value="due-asc">Due date: Earliest first</option>
-          <option value="due-desc">Due date: Latest first</option>
-        </Sel>
-        {(fm!=='all'||fe!=='all'||fp!=='all'||fsort!=='none')&&(
-          <button onClick={()=>{setFm('all');setFe('all');setFp('all');setFsort('none');}}
-            style={{background:'#FEE9E9',border:'none',cursor:'pointer',fontSize:11,color:'#ef4444',
-              fontWeight:600,padding:'5px 10px',borderRadius:99,fontFamily:F}}>
-            ✕ Clear filters
-          </button>
-        )}
-        <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500,marginLeft:'auto'}}>
-          {taskView==='evergreen'?evergreenTasks.length:kanbanFiltered.length} tasks
-        </span>
-      </div>
+      {/* Filters — Kanban tab only */}
+      {taskView==='kanban'&&(
+        <div style={{display:'flex',gap:8,marginBottom:18,alignItems:'center',flexWrap:'wrap'}}>
+          <Sel value={fm} onChange={e=>setFm(e.target.value)} style={{width:'auto',fontSize:12}}>
+            <option value="all">All members</option>
+            {team.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+          </Sel>
+          <Sel value={fe} onChange={e=>setFe(e.target.value)} style={{width:'auto',fontSize:12}}>
+            <option value="all">All entities</option>
+            {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+          </Sel>
+          <Sel value={fp} onChange={e=>setFp(e.target.value)} style={{width:'auto',fontSize:12}}>
+            <option value="all">All priorities</option>
+            {PRIORITIES.map(p=><option key={p} value={p}>{p}</option>)}
+          </Sel>
+          <Sel value={fsort} onChange={e=>setFsort(e.target.value)} style={{width:'auto',fontSize:12}}>
+            <option value="none">Sort: Default</option>
+            <option value="due-asc">Due date: Earliest first</option>
+            <option value="due-desc">Due date: Latest first</option>
+          </Sel>
+          {(fm!=='all'||fe!=='all'||fp!=='all'||fsort!=='none')&&(
+            <button onClick={()=>{setFm('all');setFe('all');setFp('all');setFsort('none');}}
+              style={{background:'#FEE9E9',border:'none',cursor:'pointer',fontSize:11,color:'#ef4444',
+                fontWeight:600,padding:'5px 10px',borderRadius:99,fontFamily:F}}>
+              ✕ Clear filters
+            </button>
+          )}
+          <span style={{fontSize:12,color:TXT2,background:CARD,padding:'5px 12px',borderRadius:99,border:`1px solid ${BORDER}`,fontWeight:500,marginLeft:'auto'}}>
+            {kanbanFiltered.length} tasks
+          </span>
+        </div>
+      )}
 
       {/* Evergreen view */}
       {taskView==='evergreen'&&(
@@ -819,7 +819,6 @@ function TasksPage({team,tasks,saveTasks}) {
               {evergreenTasks.map(t=>{
                 const ids=getIds(t);
                 const assignees=team.filter(m=>ids.includes(m.id));
-                const ec=EC[t.entity]||{a:'#94a3b8'};
                 const stDone=(t.subtasks||[]).filter(s=>s.done).length;
                 const stTotal=(t.subtasks||[]).length;
                 const stPct=stTotal>0?Math.round((stDone/stTotal)*100):null;
@@ -827,7 +826,6 @@ function TasksPage({team,tasks,saveTasks}) {
                   <div key={t.id} onClick={()=>setModal({edit:t})}
                     style={{background:CARD,borderRadius:12,padding:'14px 16px',cursor:'pointer',
                       boxShadow:CSHADOW,borderTop:'3px solid #059669',position:'relative'}}>
-                    {/* Evergreen leaf badge */}
                     <div style={{position:'absolute',top:10,right:12,background:'#d1fae5',
                       color:'#059669',fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:99,
                       textTransform:'uppercase',letterSpacing:'0.5px'}}>
@@ -890,7 +888,7 @@ function TasksPage({team,tasks,saveTasks}) {
 
       {/* Kanban view */}
       {taskView==='kanban'&&<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,alignItems:'start'}}>
-        {KANBAN_COLS.map(col=>{
+        {TASK_COLS.map(col=>{
           const colT=kanbanFiltered.filter(t=>t.status===col);
           return (
             <div key={col} onDragOver={e=>e.preventDefault()}
@@ -1124,6 +1122,7 @@ function TaskModal({title,task,onClose,onSave,onDelete,onCreateNext,team}) {
         </Sel></Lbl>
         <Lbl s="Status"><Sel value={f.status} onChange={e=>s('status',e.target.value)}>
           {TASK_COLS.map(c=><option key={c} value={c}>{c}</option>)}
+          <option value="Evergreen / Always On">Evergreen / Always On</option>
         </Sel></Lbl>
         <Lbl s="Recurring"><Sel value={f.recurring} onChange={e=>s('recurring',e.target.value)}>
           <option value="">Not recurring</option>
